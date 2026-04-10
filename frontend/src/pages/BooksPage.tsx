@@ -1,10 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Typography, Table, Button, Modal, Form, Input, Alert, Popconfirm, Space, Tag } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Alert, Popconfirm, Space, Tag, Select, Row, Col } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { bookApi } from '../services/api';
 import axios from 'axios';
-
-const { Title } = Typography;
 
 interface BookRecord {
   maSach: string;
@@ -20,11 +18,21 @@ const tinhTrangConfig: Record<string, { label: string; color: string }> = {
   MAT: { label: 'Mất', color: 'red' },
 };
 
+type SearchType = 'tieuDe' | 'tacGia' | 'maSach';
+
 export default function BooksPage() {
-  const [books, setBooks] = useState<BookRecord[]>([]);
+  const [allBooks, setAllBooks] = useState<BookRecord[]>([]);
+  const [displayBooks, setDisplayBooks] = useState<BookRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Search
+  const [searchType, setSearchType] = useState<SearchType>('tieuDe');
+  const [keyword, setKeyword] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Modal
   const [modalOpen, setModalOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<BookRecord | null>(null);
   const [modalLoading, setModalLoading] = useState(false);
@@ -36,7 +44,9 @@ export default function BooksPage() {
     setError(null);
     try {
       const { data } = await bookApi.list();
-      setBooks(Array.isArray(data) ? data : []);
+      const books = Array.isArray(data) ? data : [];
+      setAllBooks(books);
+      if (!isSearching) setDisplayBooks(books);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.error || 'Lỗi khi tải danh sách sách');
@@ -46,9 +56,34 @@ export default function BooksPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSearching]);
 
   useEffect(() => { fetchBooks(); }, [fetchBooks]);
+
+  const handleSearch = async () => {
+    if (!keyword.trim()) {
+      setIsSearching(false);
+      setDisplayBooks(allBooks);
+      return;
+    }
+    setSearchLoading(true);
+    setIsSearching(true);
+    try {
+      const params: Record<string, string> = { [searchType]: keyword.trim() };
+      const { data } = await bookApi.search(params);
+      setDisplayBooks(Array.isArray(data) ? data : []);
+    } catch {
+      setDisplayBooks([]);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setKeyword('');
+    setIsSearching(false);
+    setDisplayBooks(allBooks);
+  };
 
   const openAddModal = () => {
     setEditingBook(null);
@@ -60,10 +95,7 @@ export default function BooksPage() {
   const openEditModal = (book: BookRecord) => {
     setEditingBook(book);
     setModalError(null);
-    form.setFieldsValue({
-      tieuDe: book.tieuDe,
-      tacGia: book.tacGia,
-    });
+    form.setFieldsValue({ tieuDe: book.tieuDe, tacGia: book.tacGia });
     setModalOpen(true);
   };
 
@@ -72,21 +104,21 @@ export default function BooksPage() {
       const values = await form.validateFields();
       setModalLoading(true);
       setModalError(null);
-
       if (editingBook) {
         await bookApi.update(editingBook.maSach, { tieuDe: values.tieuDe, tacGia: values.tacGia });
       } else {
         await bookApi.create({ tieuDe: values.tieuDe, tacGia: values.tacGia });
       }
-
       setModalOpen(false);
       form.resetFields();
+      setIsSearching(false);
+      setKeyword('');
       fetchBooks();
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setModalError(err.response?.data?.error || 'Lỗi khi lưu thông tin sách');
       } else if (err instanceof Error && 'errorFields' in err) {
-        // form validation error, ignore
+        // form validation
       } else {
         setModalError('Lỗi khi lưu thông tin sách');
       }
@@ -101,44 +133,29 @@ export default function BooksPage() {
       fetchBooks();
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        Modal.error({
-          title: 'Không thể xóa',
-          content: err.response?.data?.error || 'Lỗi khi xóa sách',
-        });
+        Modal.error({ title: 'Không thể xóa', content: err.response?.data?.error || 'Lỗi khi xóa sách' });
       }
     }
   };
 
   const columns = [
-    { title: 'Mã sách', dataIndex: 'maSach', key: 'maSach' },
+    { title: 'Mã sách', dataIndex: 'maSach', key: 'maSach', width: 110 },
     { title: 'Tiêu đề', dataIndex: 'tieuDe', key: 'tieuDe' },
     { title: 'Tác giả', dataIndex: 'tacGia', key: 'tacGia' },
     {
-      title: 'Tình trạng',
-      dataIndex: 'tinhTrang',
-      key: 'tinhTrang',
+      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 120,
       render: (val: string) => {
         const cfg = tinhTrangConfig[val];
         return cfg ? <Tag color={cfg.color}>{cfg.label}</Tag> : <Tag>{val}</Tag>;
       },
     },
     {
-      title: 'Thao tác',
-      key: 'actions',
+      title: 'Thao tác', key: 'actions', width: 160,
       render: (_: unknown, record: BookRecord) => (
         <Space>
-          <Button icon={<EditOutlined />} size="small" onClick={() => openEditModal(record)}>
-            Sửa
-          </Button>
-          <Popconfirm
-            title="Xác nhận xóa sách này?"
-            onConfirm={() => handleDelete(record.maSach)}
-            okText="Xóa"
-            cancelText="Hủy"
-          >
-            <Button icon={<DeleteOutlined />} size="small" danger>
-              Xóa
-            </Button>
+          <Button icon={<EditOutlined />} size="small" onClick={() => openEditModal(record)}>Sửa</Button>
+          <Popconfirm title="Xác nhận xóa sách này?" onConfirm={() => handleDelete(record.maSach)} okText="Xóa" cancelText="Hủy">
+            <Button icon={<DeleteOutlined />} size="small" danger>Xóa</Button>
           </Popconfirm>
         </Space>
       ),
@@ -146,23 +163,57 @@ export default function BooksPage() {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={2} style={{ margin: 0 }}>Quản lý sách</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>
-          Thêm sách
-        </Button>
-      </div>
+    <div>
+      {/* Header: Search + Add */}
+      <Row gutter={16} align="middle" style={{ marginBottom: 20 }}>
+        <Col flex="auto">
+          <Space.Compact style={{ width: '100%' }}>
+            <Select
+              value={searchType}
+              onChange={(v) => setSearchType(v)}
+              style={{ width: 130 }}
+              options={[
+                { value: 'tieuDe', label: 'Tiêu đề' },
+                { value: 'tacGia', label: 'Tác giả' },
+                { value: 'maSach', label: 'Mã sách' },
+              ]}
+            />
+            <Input
+              placeholder="Tìm kiếm sách..."
+              value={keyword}
+              onChange={(e) => setKeyword(e.target.value)}
+              onPressEnter={handleSearch}
+              allowClear
+              onClear={handleClearSearch}
+              style={{ maxWidth: 360 }}
+            />
+            <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} loading={searchLoading}>
+              Tìm
+            </Button>
+          </Space.Compact>
+        </Col>
+        <Col>
+          <Button type="primary" icon={<PlusOutlined />} onClick={openAddModal}>Thêm sách</Button>
+        </Col>
+      </Row>
+
+      {isSearching && (
+        <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Tag color="blue">Kết quả tìm kiếm: {displayBooks.length} sách</Tag>
+          <Button type="link" size="small" onClick={handleClearSearch}>Xóa bộ lọc</Button>
+        </div>
+      )}
 
       {error && <Alert message={error} type="error" showIcon style={{ marginBottom: 16 }} />}
 
       <Table
         columns={columns}
-        dataSource={books}
+        dataSource={displayBooks}
         rowKey="maSach"
-        loading={loading}
-        locale={{ emptyText: 'Chưa có sách nào' }}
+        loading={loading || searchLoading}
+        locale={{ emptyText: isSearching ? 'Không tìm thấy sách phù hợp' : 'Chưa có sách nào' }}
         pagination={{ pageSize: 10 }}
+        size="small"
       />
 
       <Modal

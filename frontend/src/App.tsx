@@ -5,13 +5,12 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import MainLayout from './layouts/MainLayout';
 import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
 import BorrowPage from './pages/BorrowPage';
 import ReturnPage from './pages/ReturnPage';
 import ExtendPage from './pages/ExtendPage';
-import SearchPage from './pages/SearchPage';
 import ReadersPage from './pages/ReadersPage';
 import BooksPage from './pages/BooksPage';
-import ReportsPage from './pages/ReportsPage';
 
 export default function App() {
   return (
@@ -20,40 +19,27 @@ export default function App() {
       theme={{
         algorithm: theme.defaultAlgorithm,
         token: {
-          colorPrimary: '#0d6efd',
-          colorSuccess: '#198754',
-          colorWarning: '#ffc107',
-          colorError: '#dc3545',
-          colorInfo: '#0dcaf0',
-          borderRadius: 6,
-          fontFamily: "'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+          colorPrimary: '#0F766E',
+          colorSuccess: '#16A34A',
+          colorWarning: '#D97706',
+          colorError: '#DC2626',
+          colorInfo: '#2563EB',
+          borderRadius: 10,
+          fontFamily: "'Plus Jakarta Sans', -apple-system, sans-serif",
           fontSize: 14,
           colorBgContainer: '#ffffff',
-          colorBgLayout: '#e9ecef',
-          colorBorder: '#dee2e6',
-          colorBorderSecondary: '#ced4da',
+          colorBgLayout: '#F1F5F9',
+          colorBorder: '#E2E8F0',
+          colorBorderSecondary: '#CBD5E1',
+          colorText: '#1E293B',
+          colorTextSecondary: '#64748B',
         },
         components: {
-          Button: {
-            controlHeight: 38,
-            fontWeight: 500,
-          },
-          Card: {
-            borderRadiusLG: 8,
-          },
-          Table: {
-            headerBg: '#f8f9fa',
-            headerColor: '#212529',
-            borderColor: '#dee2e6',
-          },
-          Input: {
-            controlHeight: 38,
-          },
-          Menu: {
-            darkItemBg: '#212529',
-            darkSubMenuItemBg: '#212529',
-            darkItemSelectedBg: '#0d6efd',
-          },
+          Button: { controlHeight: 40, fontWeight: 600 },
+          Card: { borderRadiusLG: 12 },
+          Table: { headerBg: '#F8FAFC', headerColor: '#64748B', borderColor: '#E2E8F0' },
+          Input: { controlHeight: 40 },
+          Menu: { darkItemBg: '#fff', darkSubMenuItemBg: '#fff', darkItemSelectedBg: '#0F766E' },
         },
       }}
     >
@@ -64,19 +50,13 @@ export default function App() {
 
             <Route element={<ProtectedRoute />}>
               <Route element={<MainLayout />}>
-                <Route path="/" element={<Navigate to="/borrow" replace />} />
+                <Route path="/" element={<DashboardPage />} />
                 <Route path="/borrow" element={<BorrowPage />} />
                 <Route path="/return" element={<ReturnPage />} />
                 <Route path="/extend" element={<ExtendPage />} />
-                <Route path="/search" element={<SearchPage />} />
                 <Route path="/readers" element={<ReadersPage />} />
                 <Route path="/books" element={<BooksPage />} />
-              </Route>
-            </Route>
-
-            <Route element={<ProtectedRoute requiredRole="QUAN_TRI_VIEN" />}>
-              <Route element={<MainLayout />}>
-                <Route path="/reports" element={<ReportsPage />} />
+                <Route path="/reports" element={<DashboardPage />} />
               </Route>
             </Route>
 

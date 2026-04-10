@@ -61,6 +61,8 @@ export const readerApi = {
 
 // Loan APIs
 export const loanApi = {
+  list: () =>
+    api.get('/loans'),
   create: (maDocGia: string, maSach: string) =>
     api.post('/loans', { maDocGia, maSach }),
   getById: (id: string) =>

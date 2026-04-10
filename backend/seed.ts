@@ -114,6 +114,16 @@ async function seed() {
     VALUES (?, ?, ?, ?, ?, ?)
   `).run('PM002', 'DG002', 'S010', fmt(pastDue2), fmt(pastDue2Han), 'DANG_MUON');
 
+  // Phiếu đang mượn - chưa quá hạn (S015)
+  const recent = new Date(today);
+  recent.setDate(recent.getDate() - 5);
+  const recentHan = new Date(recent);
+  recentHan.setDate(recentHan.getDate() + 14);
+  db.prepare(`
+    INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `).run('PM005', 'DG006', 'S015', fmt(recent), fmt(recentHan), 'DANG_MUON');
+
   // Phiếu đã trả
   db.prepare(`
     INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai, ngayTraThucTe, tienPhat)
@@ -134,7 +144,7 @@ async function seed() {
   console.log('');
   console.log('Độc giả: DG001 - DG022 (22 người, 2+ pages)');
   console.log('Sách: S001 - S025 (25 cuốn, 2+ pages)');
-  console.log('Phiếu mượn: PM001-PM004');
+  console.log('Phiếu mượn: PM001-PM005');
 
   db.close();
 }

@@ -4,6 +4,16 @@ import { PhieuMuonController } from '../controllers/PhieuMuonController';
 export function createLoanRoutes(controller: PhieuMuonController): Router {
   const router = Router();
 
+  // GET /loans - Danh sách phiếu đang mượn
+  router.get('/', (req: Request, res: Response) => {
+    try {
+      const loans = controller.getActiveLoans();
+      res.json(loans);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /loans - Tạo phiếu mượn
   router.post('/', (req: Request, res: Response) => {
     try {

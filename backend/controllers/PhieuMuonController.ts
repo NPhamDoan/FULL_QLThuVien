@@ -15,6 +15,15 @@ export class PhieuMuonController {
     this.db = db;
   }
 
+  // === Active loans list ===
+
+  getActiveLoans(): PhieuMuon[] {
+    const rows = this.db.prepare(
+      "SELECT * FROM PhieuMuon WHERE trangThai = 'DANG_MUON' ORDER BY ngayMuon DESC"
+    ).all() as Record<string, unknown>[];
+    return rows.map((r) => this.mapRowToPhieuMuon(r));
+  }
+
   // === Task 7.1: Validation functions ===
 
   validateMember(maDocGia: string): ValidationResult {
