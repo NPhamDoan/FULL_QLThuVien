@@ -7,8 +7,15 @@ export function createLoanRoutes(controller: PhieuMuonController): Router {
   // GET /loans - Danh sách phiếu đang mượn
   router.get('/', (req: Request, res: Response) => {
     try {
-      const loans = controller.getActiveLoans();
-      res.json(loans);
+      const { search, searchType } = req.query;
+      if (search && typeof search === 'string' && search.trim()) {
+        const type = typeof searchType === 'string' ? searchType : 'all';
+        const loans = controller.searchActiveLoans(search.trim(), type);
+        res.json(loans);
+      } else {
+        const loans = controller.getActiveLoans();
+        res.json(loans);
+      }
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

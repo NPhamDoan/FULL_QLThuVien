@@ -1,4 +1,4 @@
-import { SachController } from '../SachController';
+import { SachController } from '../../controllers/SachController';
 import { initializeDatabase } from '../../database';
 import { CreateSachInput, TinhTrangSach } from '../../types';
 import Database from 'better-sqlite3';

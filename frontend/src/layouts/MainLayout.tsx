@@ -1,11 +1,10 @@
 ﻿import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Layout, Avatar, Dropdown, Typography, Space, Input, Button } from 'antd';
+import { Layout, Avatar, Dropdown, Typography } from 'antd';
 import {
   BookOutlined, ImportOutlined, ExportOutlined, HistoryOutlined,
   TeamOutlined, BarChartOutlined, LogoutOutlined, UserOutlined,
-  SettingOutlined, ReadOutlined, SearchOutlined, BellOutlined,
-  PlusOutlined,
+  SettingOutlined, ReadOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -15,26 +14,30 @@ const menuSections = [
   {
     label: 'MENU CHÍNH',
     items: [
-      { key: '/', icon: <BarChartOutlined />, label: 'Tổng quan' },
-      { key: '/books', icon: <BookOutlined />, label: 'Sách' },
       { key: '/borrow', icon: <ImportOutlined />, label: 'Mượn sách' },
       { key: '/return', icon: <ExportOutlined />, label: 'Trả sách' },
-      { key: '/readers', icon: <TeamOutlined />, label: 'Độc giả' },
+      { key: '/extend', icon: <HistoryOutlined />, label: 'Gia hạn' },
     ],
   },
   {
     label: 'QUẢN LÝ',
     items: [
-      { key: '/reports', icon: <BarChartOutlined />, label: 'Báo cáo & Thống kê' },
-      { key: '/extend', icon: <HistoryOutlined />, label: 'Gia hạn' },
+      { key: '/books', icon: <BookOutlined />, label: 'Sách' },
+      { key: '/readers', icon: <TeamOutlined />, label: 'Độc giả' },
+    ],
+  },
+  {
+    label: 'BÁO CÁO & THỐNG KÊ',
+    items: [
+      { key: '/', icon: <BarChartOutlined />, label: 'Tổng quan' },
     ],
   },
 ];
 
 const PAGE_TITLES: Record<string, string> = {
-  '/': 'Tổng quan', '/borrow': 'Mượn sách', '/return': 'Trả sách',
+  '/': 'Báo cáo & Thống kê', '/borrow': 'Mượn sách', '/return': 'Trả sách',
   '/extend': 'Gia hạn', '/books': 'Quản lý sách',
-  '/readers': 'Quản lý độc giả', '/reports': 'Thống kê & Báo cáo',
+  '/readers': 'Quản lý độc giả',
 };
 
 export default function MainLayout() {
@@ -186,17 +189,6 @@ export default function MainLayout() {
               </Typography.Text>
             )}
           </div>
-          <Space size={12}>
-            <Input
-              prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
-              placeholder="Tìm kiếm..."
-              style={{ width: 240, borderRadius: 10, background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-            />
-            <Button shape="circle" icon={<BellOutlined />} style={{ border: '1px solid #E2E8F0' }} />
-            <Button type="primary" icon={<PlusOutlined />} style={{ borderRadius: 10 }}>
-              Thêm mới
-            </Button>
-          </Space>
         </div>
 
         <Content style={{ padding: 20 }}>

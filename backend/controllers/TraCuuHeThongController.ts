@@ -1,13 +1,6 @@
 import Database from 'better-sqlite3';
 import { Sach, TinhTrangSach } from '../types';
-
-/**
- * Bỏ dấu tiếng Việt để hỗ trợ tìm kiếm gần đúng
- * "Lập trình" → "Lap trinh"
- */
-function removeDiacritics(str: string): string {
-  return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
-}
+import { removeDiacritics } from '../utils/diacritics';
 
 export class TraCuuHeThongController {
   private db: Database.Database;

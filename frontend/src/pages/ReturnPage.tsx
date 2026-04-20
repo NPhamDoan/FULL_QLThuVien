@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Card, Input, Button, Descriptions, Alert, Divider, Typography, Statistic } from 'antd';
-import { SearchOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { Input, Button, Alert, Typography, Table, Tag, Statistic, Select, Space } from 'antd';
+import { SearchOutlined, CheckCircleOutlined, ReloadOutlined } from '@ant-design/icons';
 import { loanApi } from '../services/api';
 import axios from 'axios';
 
-const { Title } = Typography;
+const { Text } = Typography;
 
 interface LoanInfo {
   maPhieu: string;
@@ -14,6 +14,8 @@ interface LoanInfo {
   hanTra: string;
   trangThai: string;
   tienPhat: number;
+  tenDocGia?: string;
+  tenSach?: string;
 }
 
 interface ReturnResult {
@@ -22,49 +24,57 @@ interface ReturnResult {
   ngayTraThucTe: string;
 }
 
-export default function ReturnPage() {
-  const [maPhieu, setMaPhieu] = useState('');
+type SearchType = 'all' | 'docgia' | 'sach' | 'maphieu';
 
-  const [loan, setLoan] = useState<LoanInfo | null>(null);
+export default function ReturnPage() {
+  const [keyword, setKeyword] = useState('');
+  const [searchType, setSearchType] = useState<SearchType>('all');
+  const [loans, setLoans] = useState<LoanInfo[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  const [searched, setSearched] = useState(false);
 
+  const [selectedLoan, setSelectedLoan] = useState<LoanInfo | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
   const [returnLoading, setReturnLoading] = useState(false);
   const [returnError, setReturnError] = useState<string | null>(null);
 
-  const handleSearch = async () => {
-    if (!maPhieu.trim()) return;
+  const doSearch = async (search?: string, type?: string) => {
     setSearchError(null);
-    setLoan(null);
+    setLoans([]);
+    setSelectedLoan(null);
     setReturnResult(null);
     setSearchLoading(true);
+    setSearched(true);
     try {
-      const { data } = await loanApi.getById(maPhieu.trim());
-      setLoan(data);
+      const { data } = await loanApi.list(search, type !== 'all' ? type : undefined);
+      setLoans(Array.isArray(data) ? data : []);
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setSearchError(err.response?.data?.error || 'Không tìm thấy phiếu mượn');
+        setSearchError(err.response?.data?.error || 'Lỗi khi tìm kiếm');
       } else {
-        setSearchError('Lỗi khi tìm phiếu mượn');
+        setSearchError('Lỗi khi tìm kiếm');
       }
     } finally {
       setSearchLoading(false);
     }
   };
 
+  const handleSearch = () => doSearch(keyword.trim() || undefined, searchType);
+
+  const handleShowAll = () => {
+    setKeyword('');
+    setSearchType('all');
+    doSearch();
+  };
+
   const handleReturn = async () => {
-    if (!loan) return;
+    if (!selectedLoan) return;
     setReturnError(null);
-    setReturnResult(null);
     setReturnLoading(true);
     try {
-      const { data } = await loanApi.returnBook(loan.maPhieu);
-      setReturnResult({
-        success: data.success,
-        tienPhat: data.tienPhat,
-        ngayTraThucTe: data.ngayTraThucTe,
-      });
+      const { data } = await loanApi.returnBook(selectedLoan.maPhieu);
+      setReturnResult({ success: data.success, tienPhat: data.tienPhat, ngayTraThucTe: data.ngayTraThucTe });
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setReturnError(err.response?.data?.error || err.response?.data?.message || 'Lỗi khi trả sách');
@@ -76,136 +86,206 @@ export default function ReturnPage() {
     }
   };
 
-  const isOverdue = () => {
-    if (!loan) return false;
-    const today = new Date();
-    const hanTra = new Date(loan.hanTra);
-    return today > hanTra && loan.trangThai === 'DANG_MUON';
+  const handleReset = () => {
+    setKeyword('');
+    setSearchType('all');
+    setLoans([]);
+    setSearched(false);
+    setSelectedLoan(null);
+    setReturnResult(null);
+    setReturnError(null);
+    setSearchError(null);
   };
 
-  const estimateFine = () => {
-    if (!loan || !isOverdue()) return 0;
-    const today = new Date();
-    const hanTra = new Date(loan.hanTra);
-    const diffDays = Math.ceil((today.getTime() - hanTra.getTime()) / (1000 * 60 * 60 * 24));
-    return diffDays * 5000;
+  const isOverdue = (hanTra: string) => new Date() > new Date(hanTra);
+  const estimateFine = (hanTra: string) => {
+    if (!isOverdue(hanTra)) return 0;
+    return Math.ceil((new Date().getTime() - new Date(hanTra).getTime()) / (1000 * 60 * 60 * 24)) * 5000;
   };
 
-  const trangThaiLabel: Record<string, string> = {
-    DANG_MUON: 'Đang mượn',
-    DA_TRA: 'Đã trả',
-  };
+  const columns = [
+    { title: 'Mã phiếu', dataIndex: 'maPhieu', key: 'maPhieu', width: 130 },
+    {
+      title: 'Độc giả', key: 'docgia', width: 160,
+      render: (_: unknown, r: LoanInfo) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{r.tenDocGia || r.maDocGia}</div>
+          {r.tenDocGia && <div style={{ fontSize: 12, color: '#94A3B8' }}>{r.maDocGia}</div>}
+        </div>
+      ),
+    },
+    {
+      title: 'Sách', key: 'sach', width: 180,
+      render: (_: unknown, r: LoanInfo) => (
+        <div>
+          <div style={{ fontWeight: 500 }}>{r.tenSach || r.maSach}</div>
+          {r.tenSach && <div style={{ fontSize: 12, color: '#94A3B8' }}>{r.maSach}</div>}
+        </div>
+      ),
+    },
+    {
+      title: 'Ngày mượn', dataIndex: 'ngayMuon', key: 'ngayMuon', width: 110,
+      render: (v: string) => v?.split('T')[0],
+    },
+    {
+      title: 'Hạn trả', dataIndex: 'hanTra', key: 'hanTra', width: 110,
+      render: (v: string) => <Text type={isOverdue(v) ? 'danger' : undefined} strong={isOverdue(v)}>{v?.split('T')[0]}</Text>,
+    },
+    {
+      title: 'Phạt (ước tính)', key: 'fine', width: 120,
+      render: (_: unknown, r: LoanInfo) => {
+        const fine = estimateFine(r.hanTra);
+        return fine > 0 ? <Tag color="red">{fine.toLocaleString()} VNĐ</Tag> : <Tag color="green">Không</Tag>;
+      },
+    },
+    {
+      title: '', key: 'action', width: 100,
+      render: (_: unknown, r: LoanInfo) => (
+        <Button type="primary" size="small" onClick={() => setSelectedLoan(r)} style={{ borderRadius: 8 }}>
+          Chọn trả
+        </Button>
+      ),
+    },
+  ];
 
   return (
-    <div style={{ padding: 24, maxWidth: 700, margin: '0 auto' }}>
-      <Title level={2}>Trả sách</Title>
-
-      {/* Search loan */}
-      <Card title="Tìm phiếu mượn" style={{ marginBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <Input
-            placeholder="Nhập mã phiếu mượn"
-            value={maPhieu}
-            onChange={(e) => setMaPhieu(e.target.value)}
-            onPressEnter={handleSearch}
-            disabled={!!returnResult}
-          />
-          <Button
-            type="primary"
-            icon={<SearchOutlined />}
-            onClick={handleSearch}
-            loading={searchLoading}
-            disabled={!maPhieu.trim() || !!returnResult}
-          >
-            Tìm kiếm
-          </Button>
+    <div style={{ maxWidth: 900, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 22, color: '#1E293B', fontWeight: 700 }}>Trả sách</h2>
+          <Text style={{ color: '#94A3B8', fontSize: 13 }}>Tìm phiếu mượn theo tên độc giả, tên sách hoặc mã phiếu</Text>
         </div>
-        {searchError && <Alert message={searchError} type="error" showIcon />}
-      </Card>
+        {(searched || selectedLoan) && (
+          <Button icon={<ReloadOutlined />} onClick={handleReset}>Làm lại</Button>
+        )}
+      </div>
 
-      {/* Loan info */}
-      {loan && !returnResult && (
-        <>
-          <Card title="Thông tin phiếu mượn" style={{ marginBottom: 16 }}>
-            <Descriptions bordered size="small" column={1}>
-              <Descriptions.Item label="Mã phiếu">{loan.maPhieu}</Descriptions.Item>
-              <Descriptions.Item label="Mã độc giả">{loan.maDocGia}</Descriptions.Item>
-              <Descriptions.Item label="Mã sách">{loan.maSach}</Descriptions.Item>
-              <Descriptions.Item label="Ngày mượn">{loan.ngayMuon}</Descriptions.Item>
-              <Descriptions.Item label="Hạn trả">{loan.hanTra}</Descriptions.Item>
-              <Descriptions.Item label="Trạng thái">
-                {trangThaiLabel[loan.trangThai] || loan.trangThai}
-              </Descriptions.Item>
-            </Descriptions>
-
-            {isOverdue() && (
-              <div style={{ marginTop: 16 }}>
-                <Alert
-                  message="Sách quá hạn!"
-                  type="warning"
-                  showIcon
-                  style={{ marginBottom: 12 }}
-                />
-                <Statistic
-                  title="Tiền phạt ước tính"
-                  value={estimateFine()}
-                  suffix="VND"
-                  valueStyle={{ color: '#cf1322' }}
-                />
-              </div>
-            )}
-          </Card>
-
-          <Divider />
-
-          <Card>
-            {returnError && <Alert message={returnError} type="error" showIcon style={{ marginBottom: 12 }} />}
-            {loan.trangThai === 'DA_TRA' ? (
-              <Alert message="Sách đã được trả trước đó" type="info" showIcon />
-            ) : (
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                size="large"
-                block
-                onClick={handleReturn}
-                loading={returnLoading}
-              >
-                Xác nhận trả sách
+      {/* Search */}
+      {!selectedLoan && !returnResult && (
+        <div style={{ background: '#F8FAFC', borderRadius: 12, padding: 20, border: '1px solid #E2E8F0', marginBottom: 20 }}>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Space.Compact style={{ flex: 1 }}>
+              <Select
+                value={searchType}
+                onChange={(v) => setSearchType(v)}
+                style={{ width: 150 }}
+                options={[
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'docgia', label: 'Tên độc giả' },
+                  { value: 'sach', label: 'Tên sách' },
+                  { value: 'maphieu', label: 'Mã phiếu' },
+                ]}
+              />
+              <Input
+                prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+                placeholder={
+                  searchType === 'docgia' ? 'Nhập tên độc giả...' :
+                  searchType === 'sach' ? 'Nhập tên sách...' :
+                  searchType === 'maphieu' ? 'Nhập mã phiếu...' :
+                  'Nhập từ khóa tìm kiếm...'
+                }
+                value={keyword}
+                onChange={(e) => setKeyword(e.target.value)}
+                onPressEnter={handleSearch}
+                allowClear
+              />
+              <Button type="primary" icon={<SearchOutlined />} onClick={handleSearch} loading={searchLoading}>
+                Tìm
               </Button>
-            )}
-          </Card>
-        </>
+            </Space.Compact>
+            <Button onClick={handleShowAll}>Xem tất cả</Button>
+          </div>
+
+          {searchError && <Alert message={searchError} type="error" showIcon style={{ marginTop: 12 }} />}
+
+          {searched && (
+            <div style={{ marginTop: 16 }}>
+              <div style={{ marginBottom: 8, fontSize: 13, color: '#64748B' }}>
+                {loans.length > 0
+                  ? `Tìm thấy ${loans.length} phiếu đang mượn${keyword ? ` cho "${keyword}"` : ''}`
+                  : 'Không tìm thấy phiếu mượn nào'}
+              </div>
+              <Table
+                columns={columns}
+                dataSource={loans}
+                rowKey="maPhieu"
+                size="small"
+                pagination={{ pageSize: 6 }}
+                locale={{ emptyText: 'Không có phiếu mượn nào' }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Selected loan — confirm return */}
+      {selectedLoan && !returnResult && (
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #E2E8F0' }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: '#1E293B', marginBottom: 16 }}>Xác nhận trả sách</div>
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px 24px',
+            background: '#F8FAFC', borderRadius: 10, padding: 20, border: '1px solid #E2E8F0', marginBottom: 20,
+          }}>
+            <InfoItem label="Mã phiếu" value={selectedLoan.maPhieu} />
+            <InfoItem label="Độc giả" value={selectedLoan.tenDocGia || selectedLoan.maDocGia} highlight />
+            <InfoItem label="Sách" value={selectedLoan.tenSach || selectedLoan.maSach} highlight />
+            <InfoItem label="Ngày mượn" value={selectedLoan.ngayMuon?.split('T')[0]} />
+            <InfoItem label="Hạn trả" value={selectedLoan.hanTra?.split('T')[0]} />
+            <InfoItem label="Trạng thái" value={
+              isOverdue(selectedLoan.hanTra) ? <Tag color="red">Quá hạn</Tag> : <Tag color="green">Trong hạn</Tag>
+            } />
+          </div>
+
+          {isOverdue(selectedLoan.hanTra) && (
+            <div style={{
+              background: '#FEF2F2', borderRadius: 10, padding: 16, border: '1px solid #FECACA', marginBottom: 20,
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            }}>
+              <Text style={{ color: '#DC2626', fontWeight: 500 }}>Tiền phạt ước tính (quá hạn)</Text>
+              <Statistic value={estimateFine(selectedLoan.hanTra)} suffix="VNĐ" valueStyle={{ color: '#DC2626', fontSize: 20, fontWeight: 700 }} />
+            </div>
+          )}
+
+          {returnError && <Alert message={returnError} type="error" showIcon style={{ marginBottom: 16 }} />}
+
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button onClick={() => setSelectedLoan(null)} style={{ flex: 1, height: 44 }}>Quay lại danh sách</Button>
+            <Button type="primary" icon={<CheckCircleOutlined />} onClick={handleReturn} loading={returnLoading} style={{ flex: 2, height: 44, fontWeight: 600 }}>
+              Xác nhận trả sách
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Return result */}
       {returnResult && (
-        <Card>
-          <Alert
-            message="Trả sách thành công!"
-            description={
-              <Descriptions bordered size="small" column={1} style={{ marginTop: 8 }}>
-                <Descriptions.Item label="Ngày trả thực tế">
-                  {new Date(returnResult.ngayTraThucTe).toLocaleDateString('vi-VN')}
-                </Descriptions.Item>
-                <Descriptions.Item label="Tiền phạt">
-                  {returnResult.tienPhat > 0 ? (
-                    <Statistic
-                      value={returnResult.tienPhat}
-                      suffix="VND"
-                      valueStyle={{ color: '#cf1322', fontSize: 16 }}
-                    />
-                  ) : (
-                    'Không có'
-                  )}
-                </Descriptions.Item>
-              </Descriptions>
-            }
-            type="success"
-            showIcon
-          />
-        </Card>
+        <div style={{ background: '#fff', borderRadius: 12, padding: 24, border: '1px solid #E2E8F0' }}>
+          <Alert message="Trả sách thành công!" type="success" showIcon icon={<CheckCircleOutlined />} style={{ marginBottom: 20 }} />
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px 24px',
+            background: '#F8FAFC', borderRadius: 10, padding: 20, border: '1px solid #E2E8F0', marginBottom: 20,
+          }}>
+            <InfoItem label="Mã phiếu" value={selectedLoan?.maPhieu || ''} />
+            <InfoItem label="Ngày trả" value={new Date(returnResult.ngayTraThucTe).toLocaleDateString('vi-VN')} highlight />
+            <InfoItem label="Tiền phạt" value={
+              returnResult.tienPhat > 0
+                ? <span style={{ color: '#DC2626', fontWeight: 700 }}>{returnResult.tienPhat.toLocaleString()} VNĐ</span>
+                : <span style={{ color: '#16A34A', fontWeight: 600 }}>Không có</span>
+            } />
+          </div>
+          <Button icon={<ReloadOutlined />} onClick={handleReset} block style={{ height: 42 }}>Trả sách khác</Button>
+        </div>
       )}
+    </div>
+  );
+}
+
+function InfoItem({ label, value, highlight }: { label: string; value: React.ReactNode; highlight?: boolean }) {
+  return (
+    <div>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 14, fontWeight: highlight ? 600 : 400, color: '#1E293B' }}>{value}</div>
     </div>
   );
 }

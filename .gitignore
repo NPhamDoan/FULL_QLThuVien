@@ -11,9 +11,11 @@ backend/Database/*.db
 backend/Database/*.db-shm
 backend/Database/*.db-wal
 
+# Env
+.env
+
 # IDE
 .vscode/
-.config/
 
 # OS
 .DS_Store
@@ -25,5 +27,5 @@ Thumbs.db
 # Coverage
 coverage/
 
-#kiro
-.kiro/steering/ui-ux-pro-max
+# Kiro
+.kiro/

@@ -35,7 +35,7 @@ export const authApi = {
 export const bookApi = {
   list: () =>
     api.get('/books'),
-  search: (params: { tieuDe?: string; tacGia?: string; maSach?: string }) =>
+  search: (params: { tieuDe?: string; tacGia?: string; maSach?: string; keyword?: string; tinhTrang?: string }) =>
     api.get('/books/search', { params }),
   create: (data: { tieuDe: string; tacGia: string }) =>
     api.post('/books', data),
@@ -51,6 +51,8 @@ export const readerApi = {
     api.get('/readers'),
   getById: (id: string) =>
     api.get(`/readers/${id}`),
+  search: (keyword: string) =>
+    api.get('/readers/search', { params: { keyword } }),
   create: (data: Record<string, unknown>) =>
     api.post('/readers', data),
   update: (id: string, data: Record<string, unknown>) =>
@@ -61,8 +63,8 @@ export const readerApi = {
 
 // Loan APIs
 export const loanApi = {
-  list: () =>
-    api.get('/loans'),
+  list: (search?: string, searchType?: string) =>
+    api.get('/loans', { params: { ...(search ? { search } : {}), ...(searchType ? { searchType } : {}) } }),
   create: (maDocGia: string, maSach: string) =>
     api.post('/loans', { maDocGia, maSach }),
   getById: (id: string) =>

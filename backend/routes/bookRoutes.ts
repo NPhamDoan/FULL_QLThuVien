@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { SachController } from '../controllers/SachController';
 import { TraCuuHeThongController } from '../controllers/TraCuuHeThongController';
+import { removeDiacritics } from '../utils/diacritics';
 
 export function createBookRoutes(
   sachController: SachController,
@@ -21,7 +22,27 @@ export function createBookRoutes(
   // GET /books/search
   router.get('/search', (req: Request, res: Response) => {
     try {
-      const { tieuDe, tacGia, maSach } = req.query;
+      const { tieuDe, tacGia, maSach, keyword, tinhTrang } = req.query;
+
+      // Unified keyword search across all fields (diacritics-aware)
+      if (keyword) {
+        const kw = (keyword as string).toLowerCase();
+        const kwNorm = removeDiacritics(kw);
+        let rows = (sachController as any).db.prepare('SELECT * FROM Sach ORDER BY createdAt DESC').all() as Record<string, unknown>[];
+        rows = rows.filter((r) => {
+          const fields = [r.maSach, r.tieuDe, r.tacGia].map(v => String(v || ''));
+          return fields.some(f =>
+            f.toLowerCase().includes(kw) || removeDiacritics(f).toLowerCase().includes(kwNorm)
+          );
+        });
+        if (tinhTrang) {
+          rows = rows.filter(r => r.tinhTrang === tinhTrang);
+        }
+        res.json(rows);
+        return;
+      }
+
+      // Legacy single-field search
       if (maSach) {
         const result = searchController.searchByCode(maSach as string);
         res.json(result ? [result] : []);

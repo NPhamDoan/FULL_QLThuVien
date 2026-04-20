@@ -17,11 +17,60 @@ export class PhieuMuonController {
 
   // === Active loans list ===
 
-  getActiveLoans(): PhieuMuon[] {
-    const rows = this.db.prepare(
-      "SELECT * FROM PhieuMuon WHERE trangThai = 'DANG_MUON' ORDER BY ngayMuon DESC"
-    ).all() as Record<string, unknown>[];
-    return rows.map((r) => this.mapRowToPhieuMuon(r));
+  getActiveLoans(): (PhieuMuon & { tenDocGia?: string; tenSach?: string })[] {
+    const rows = this.db.prepare(`
+      SELECT pm.*, dg.hoTen AS tenDocGia, s.tieuDe AS tenSach
+      FROM PhieuMuon pm
+      LEFT JOIN DocGia dg ON pm.maDocGia = dg.maDocGia
+      LEFT JOIN Sach s ON pm.maSach = s.maSach
+      WHERE pm.trangThai = 'DANG_MUON'
+      ORDER BY pm.ngayMuon DESC
+    `).all() as Record<string, unknown>[];
+    return rows.map((r) => ({
+      ...this.mapRowToPhieuMuon(r),
+      tenDocGia: r.tenDocGia as string | undefined,
+      tenSach: r.tenSach as string | undefined,
+    }));
+  }
+
+  searchActiveLoans(keyword: string, searchType: string = 'all'): (PhieuMuon & { tenDocGia?: string; tenSach?: string })[] {
+    const like = `%${keyword}%`;
+    let whereClause: string;
+    let params: string[];
+
+    switch (searchType) {
+      case 'docgia':
+        whereClause = 'AND (dg.hoTen LIKE ?)';
+        params = [like];
+        break;
+      case 'sach':
+        whereClause = 'AND (s.tieuDe LIKE ?)';
+        params = [like];
+        break;
+      case 'maphieu':
+        whereClause = 'AND (pm.maPhieu LIKE ?)';
+        params = [like];
+        break;
+      default:
+        whereClause = 'AND (dg.hoTen LIKE ? OR s.tieuDe LIKE ? OR pm.maPhieu LIKE ? OR pm.maDocGia LIKE ? OR pm.maSach LIKE ?)';
+        params = [like, like, like, like, like];
+        break;
+    }
+
+    const rows = this.db.prepare(`
+      SELECT pm.*, dg.hoTen AS tenDocGia, s.tieuDe AS tenSach
+      FROM PhieuMuon pm
+      LEFT JOIN DocGia dg ON pm.maDocGia = dg.maDocGia
+      LEFT JOIN Sach s ON pm.maSach = s.maSach
+      WHERE pm.trangThai = 'DANG_MUON'
+        ${whereClause}
+      ORDER BY pm.ngayMuon DESC
+    `).all(...params) as Record<string, unknown>[];
+    return rows.map((r) => ({
+      ...this.mapRowToPhieuMuon(r),
+      tenDocGia: r.tenDocGia as string | undefined,
+      tenSach: r.tenSach as string | undefined,
+    }));
   }
 
   // === Task 7.1: Validation functions ===

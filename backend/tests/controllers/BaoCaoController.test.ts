@@ -1,4 +1,4 @@
-import { BaoCaoController } from '../BaoCaoController';
+import { BaoCaoController } from '../../controllers/BaoCaoController';
 import { initializeDatabase } from '../../database';
 import { TrangThaiPhieu, TinhTrangSach } from '../../types';
 import Database from 'better-sqlite3';

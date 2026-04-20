@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { DocGiaController } from '../controllers/DocGiaController';
+import { removeDiacritics } from '../utils/diacritics';
 
 export function createReaderRoutes(controller: DocGiaController): Router {
   const router = Router();
@@ -9,6 +10,29 @@ export function createReaderRoutes(controller: DocGiaController): Router {
     try {
       const rows = (controller as any).db.prepare('SELECT * FROM DocGia ORDER BY createdAt DESC').all();
       res.json(rows);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /readers/search - Search readers by keyword (diacritics-aware)
+  router.get('/search', (req: Request, res: Response) => {
+    try {
+      const { keyword } = req.query;
+      const rows = (controller as any).db.prepare('SELECT * FROM DocGia ORDER BY createdAt DESC').all() as Record<string, unknown>[];
+      if (!keyword || (keyword as string).trim() === '') {
+        res.json(rows);
+        return;
+      }
+      const kw = (keyword as string).toLowerCase();
+      const kwNorm = removeDiacritics(kw);
+      const filtered = rows.filter((r) => {
+        const fields = [r.maDocGia, r.hoTen, r.email, r.soDienThoai].map(v => String(v || ''));
+        return fields.some(f =>
+          f.toLowerCase().includes(kw) || removeDiacritics(f).toLowerCase().includes(kwNorm)
+        );
+      });
+      res.json(filtered);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

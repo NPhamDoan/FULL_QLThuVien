@@ -6,7 +6,7 @@ import {
   addSession,
   removeSession,
   SessionInfo,
-} from '../auth';
+} from '../../middleware/auth';
 import { VaiTro, TrangThaiTaiKhoan } from '../../types';
 
 // Helper to create mock Request/Response/NextFunction

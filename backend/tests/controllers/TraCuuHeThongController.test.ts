@@ -1,4 +1,4 @@
-import { TraCuuHeThongController } from '../TraCuuHeThongController';
+import { TraCuuHeThongController } from '../../controllers/TraCuuHeThongController';
 import { initializeDatabase } from '../../database';
 import { TinhTrangSach } from '../../types';
 import Database from 'better-sqlite3';

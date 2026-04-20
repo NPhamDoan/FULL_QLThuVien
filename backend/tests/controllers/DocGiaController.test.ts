@@ -1,4 +1,4 @@
-import { DocGiaController } from '../DocGiaController';
+import { DocGiaController } from '../../controllers/DocGiaController';
 import { initializeDatabase } from '../../database';
 import { CreateDocGiaInput } from '../../types';
 import Database from 'better-sqlite3';

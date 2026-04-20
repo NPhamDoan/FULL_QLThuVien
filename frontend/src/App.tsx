@@ -56,7 +56,6 @@ export default function App() {
                 <Route path="/extend" element={<ExtendPage />} />
                 <Route path="/readers" element={<ReadersPage />} />
                 <Route path="/books" element={<BooksPage />} />
-                <Route path="/reports" element={<DashboardPage />} />
               </Route>
             </Route>
 

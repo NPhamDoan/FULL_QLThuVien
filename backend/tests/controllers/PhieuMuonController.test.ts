@@ -1,4 +1,4 @@
-import { PhieuMuonController } from '../PhieuMuonController';
+import { PhieuMuonController } from '../../controllers/PhieuMuonController';
 import { initializeDatabase } from '../../database';
 import { TinhTrangSach, TrangThaiPhieu } from '../../types';
 import Database from 'better-sqlite3';

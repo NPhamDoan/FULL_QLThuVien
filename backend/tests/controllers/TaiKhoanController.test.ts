@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { TaiKhoanController } from '../TaiKhoanController';
+import { TaiKhoanController } from '../../controllers/TaiKhoanController';
 import { initializeDatabase } from '../../database';
 import { LoginError, VaiTro, TrangThaiTaiKhoan } from '../../types';
 import Database from 'better-sqlite3';
