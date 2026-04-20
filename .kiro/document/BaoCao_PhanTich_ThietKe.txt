@@ -1,0 +1,586 @@
+================================================================================
+ BÁO CÁO PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG QUẢN LÝ THƯ VIỆN
+================================================================================
+
+Hệ thống Quản lý Thư viện (Library Management System) là phần mềm (PM) hỗ trợ
+thủ thư và độc giả trong việc quản lý sách, mượn/trả sách, tra cứu và thống kê.
+Hệ thống thay thế quy trình thủ công bằng cơ sở dữ liệu tập trung.
+
+Bảng thuật ngữ:
+  - PM          : Phần mềm Quản lý Thư viện
+  - He_Thong    : Hệ thống quản lý thư viện
+  - Thu_Thu     : Thủ thư - nhân viên thư viện
+  - Doc_Gia     : Độc giả - người sử dụng dịch vụ
+  - Sach        : Đối tượng sách (mã, tiêu đề, tác giả, tình trạng)
+  - Phieu_Muon  : Bản ghi mượn sách (mã phiếu, ngày mượn, hạn trả, tiền phạt)
+  - Tai_Khoan   : Tài khoản đăng nhập hệ thống
+  - So_Muon_Tra : Sổ ghi chép mượn trả sách (thủ công)
+  - The_Doc_Gia : Thẻ độc giả vật lý
+
+3 Use Case chính: UC01: Mượn sách | UC02: Trả sách | UC03: Gia hạn mượn sách
+
+================================================================================
+PHẦN 1: MÔ TẢ MÔI TRƯỜNG VẬN HÀNH
+================================================================================
+
+------------------------------------------------------------------------
+1a) Mô hình vận hành cũ (Thủ công)
+------------------------------------------------------------------------
+
+UC01 - Mượn sách: Độc giả đưa thẻ cho thủ thư. Thủ thư kiểm tra thẻ bằng mắt,
+tra sổ danh mục sách, ghi thông tin vào sổ mượn trả (mã độc giả, mã sách, ngày
+mượn, hạn trả 14 ngày), đóng dấu phiếu mượn giấy và giao sách.
+
+UC02 - Trả sách: Thủ thư đối chiếu phiếu mượn với sổ, kiểm tra hạn trả, tính
+tiền phạt thủ công (số ngày quá hạn × đơn giá), ghi ngày trả vào sổ, thu phạt.
+
+UC03 - Gia hạn: Thủ thư tra sổ tìm bản ghi, gạch hạn trả cũ và ghi hạn trả
+mới (+7 ngày).
+
+--- Lược đồ cộng tác - Mô hình cũ ---
+
+@startuml
+object Doc_Gia
+object Thu_Thu
+object So_Muon_Tra
+object Danh_Muc_Sach
+object The_Doc_Gia
+object Phieu_Muon_Giay
+
+Doc_Gia --> Thu_Thu : 1: Yêu cầu mượn/trả/gia hạn
+Thu_Thu --> The_Doc_Gia : 2: Kiểm tra thẻ bằng mắt
+Thu_Thu --> Danh_Muc_Sach : 3: Tra cứu sách thủ công
+Thu_Thu --> So_Muon_Tra : 4: Ghi chép / Tra cứu
+Thu_Thu --> Phieu_Muon_Giay : 5: Đóng dấu / Cập nhật
+Thu_Thu --> Doc_Gia : 6: Giao sách / Thu phạt
+@enduml
+
+Ưu điểm: Không cần công nghệ, dễ triển khai, không phụ thuộc điện/mạng
+Khuyết điểm: Tốn 5-10 phút/giao dịch, dễ sai sót, khó thống kê
+
+------------------------------------------------------------------------
+1b) Mô hình vận hành mới có PM
+------------------------------------------------------------------------
+
+Actors: Thu_Thu, Doc_Gia, PM (He_Thong)
+Use Case hỗ trợ: Đăng nhập, Xác nhận giao dịch
+
+--- UC01: Mượn sách (Có PM) ---
+
+  1. Độc giả đưa thẻ + sách cho thủ thư
+  2. Thủ thư tìm kiếm độc giả trên PM (theo mã, tên, email hoặc SĐT)
+  3. PM hiển thị danh sách kết quả, thủ thư chọn độc giả
+  4. PM kiểm tra hợp lệ (tồn tại + thẻ chưa hết hạn)
+  5. Thủ thư tìm kiếm sách (theo mã, tiêu đề hoặc tác giả)
+  6. PM hiển thị sách kèm tình trạng, thủ thư chọn sách sẵn sàng
+  7. Thủ thư xác nhận -> PM tạo Phieu_Muon (hanTra = ngayMuon + 14 ngày)
+  8. PM cập nhật Sach.tinhTrang = DA_MUON
+
+Lược đồ tuần tự tt-1 (UC01 - Mượn sách):
+
+@startuml
+actor Doc_Gia as "Actor: Doc_Gia"
+actor Thu_Thu as "Actor: Thu_Thu"
+participant PM
+
+Doc_Gia -> Thu_Thu : Đưa thẻ độc giả + sách
+Thu_Thu -> PM : Tìm kiếm độc giả (mã/tên/email/SĐT)
+PM --> Thu_Thu : Hiển thị danh sách kết quả
+Thu_Thu -> PM : Chọn độc giả
+
+alt Không hợp lệ
+    PM --> Thu_Thu : Hiển thị lỗi
+    Thu_Thu --> Doc_Gia : Từ chối
+else Hợp lệ
+    PM --> Thu_Thu : Thông tin độc giả
+    Thu_Thu -> PM : Tìm kiếm sách (mã/tiêu đề/tác giả)
+    PM --> Thu_Thu : Danh sách sách + tình trạng
+    Thu_Thu -> PM : Chọn sách SAN_SANG
+    alt Không khả dụng
+        PM --> Thu_Thu : Lỗi "Sách không khả dụng"
+    else Khả dụng
+        PM --> Thu_Thu : Thông tin sách
+        Thu_Thu -> PM : Xác nhận mượn
+        PM -> PM : Tạo Phieu_Muon + Cập nhật Sach
+        PM --> Thu_Thu : Phiếu mượn (mã, ngày mượn, hạn trả)
+        Thu_Thu --> Doc_Gia : Giao sách
+    end
+end
+@enduml
+
+Lược đồ hoạt động (UC01 - Mượn sách):
+
+@startuml
+start
+:Tìm kiếm độc giả;
+:Chọn độc giả từ kết quả;
+if (Hợp lệ?) then (Không)
+    :Hiển thị lỗi;
+    stop
+else (Có)
+endif
+:Tìm kiếm sách;
+:Chọn sách từ kết quả;
+if (Khả dụng?) then (Không)
+    :Hiển thị lỗi sách;
+    stop
+else (Có)
+endif
+:Tạo phiếu mượn (hanTra = ngayMuon + 14 ngày);
+:Cập nhật trạng thái sách = DA_MUON;
+:Hiển thị phiếu mượn;
+stop
+@enduml
+
+--- UC02: Trả sách (Có PM) ---
+
+  1. Độc giả mang sách đến trả
+  2. Thủ thư tìm phiếu mượn (theo tên độc giả, tên sách, hoặc mã phiếu)
+  3. PM hiển thị danh sách phiếu đang mượn kèm phạt ước tính
+  4. Thủ thư chọn phiếu -> PM hiển thị chi tiết + tiền phạt tự động
+  5. Thủ thư xác nhận -> PM cập nhật trangThai = DA_TRA, Sach = SAN_SANG
+
+Lược đồ tuần tự tt-1 (UC02 - Trả sách):
+
+@startuml
+actor Doc_Gia as "Actor: Doc_Gia"
+actor Thu_Thu as "Actor: Thu_Thu"
+participant PM
+
+Doc_Gia -> Thu_Thu : Đưa sách cần trả
+Thu_Thu -> PM : Tìm phiếu mượn (tên độc giả/tên sách/mã phiếu)
+PM --> Thu_Thu : Danh sách phiếu đang mượn + phạt ước tính
+Thu_Thu -> PM : Chọn phiếu
+
+alt Không tìm thấy
+    PM --> Thu_Thu : Lỗi "Không tìm thấy"
+else Tìm thấy
+    PM --> Thu_Thu : Chi tiết phiếu
+    PM -> PM : Tính phạt tự động
+    note right of PM
+        Quá hạn: soNgay x 5000 VNĐ
+        Đúng hạn: 0
+    end note
+    PM --> Thu_Thu : Tiền phạt
+    Thu_Thu -> PM : Xác nhận trả
+    PM -> PM : Cập nhật PhieuMuon + Sach
+    PM --> Thu_Thu : Kết quả trả sách
+    Thu_Thu --> Doc_Gia : Thu phạt (nếu có)
+end
+@enduml
+
+Lược đồ trạng thái Phieu_Muon:
+
+@startuml
+[*] --> DANG_MUON : Tạo phiếu mượn
+DANG_MUON --> DA_TRA : Trả đúng hạn
+DANG_MUON --> QUA_HAN : Hết hạn trả
+QUA_HAN --> DA_TRA : Trả + nộp phạt
+DANG_MUON --> GIA_HAN : Gia hạn
+GIA_HAN --> DANG_MUON : +7 ngày
+DA_TRA --> [*]
+@enduml
+
+--- UC03: Gia hạn (Có PM) ---
+
+  1. Thủ thư nhập mã phiếu -> PM tìm Phieu_Muon
+  2. PM kiểm tra hợp lệ (trangThai = DANG_MUON)
+  3. Thủ thư yêu cầu gia hạn -> PM cập nhật hanTra += 7 ngày
+
+Lược đồ tuần tự tt-1 (UC03 - Gia hạn):
+
+@startuml
+actor Thu_Thu as "Actor: Thu_Thu"
+participant PM
+
+Thu_Thu -> PM : Nhập mã phiếu
+PM -> PM : Tìm Phieu_Muon
+
+alt Không tồn tại
+    PM --> Thu_Thu : Lỗi "Không tìm thấy"
+else Đã trả
+    PM --> Thu_Thu : Lỗi "Đã hoàn tất"
+else Hợp lệ (DANG_MUON)
+    PM --> Thu_Thu : Thông tin phiếu
+    Thu_Thu -> PM : Yêu cầu gia hạn
+    PM -> PM : hanTra += 7 ngày
+    PM --> Thu_Thu : Phiếu đã gia hạn
+end
+@enduml
+
+Ưu điểm PM: Xử lý 3-5 giây, tự động validate, tính phạt chính xác, tìm kiếm
+  không dấu, báo cáo tức thì
+Khuyết điểm PM: Cần đầu tư ban đầu, phụ thuộc điện/máy tính, cần bảo trì
+
+So sánh hai mô hình:
+  +----------------------------+------------------+-------------------+
+  | Tiêu chí                   | Thủ công         | Có PM             |
+  +----------------------------+------------------+-------------------+
+  | Thời gian giao dịch        | 5-10 phút        | 3-5 giây          |
+  | Tra cứu                    | 5-15 phút        | < 2 giây          |
+  | Tính phạt                  | Thủ công, dễ sai | Tự động           |
+  | Phát hiện quá hạn          | Rất khó          | Tự động           |
+  +----------------------------+------------------+-------------------+
+
+================================================================================
+PHẦN 2: PHÂN TÍCH YÊU CẦU
+================================================================================
+
+------------------------------------------------------------------------
+2a) Phân tích đối tượng thành phần (CRC)
+------------------------------------------------------------------------
+
+UC01: Doc_Gia (kiểm tra hợp lệ), Sach (kiểm tra khả dụng), Phieu_Muon (tạo)
+UC02: Phieu_Muon (tìm, cập nhật, tính phạt), Sach (cập nhật trạng thái)
+UC03: Phieu_Muon (tìm, kiểm tra điều kiện, cập nhật hạn trả)
+
+Bảng CRC:
+  +-------------+----------------------------------------------+---------------+
+  | Lớp         | Trách nhiệm                                  | Cộng tác      |
+  +-------------+----------------------------------------------+---------------+
+  | Sach        | Lưu trữ thông tin sách, cập nhật trạng thái  | Phieu_Muon    |
+  | Doc_Gia     | Lưu trữ thông tin độc giả, kiểm tra hạn thẻ | Phieu_Muon    |
+  | Phieu_Muon  | Ghi nhận mượn sách, tính phạt, gia hạn       | Sach, Doc_Gia |
+  | Tai_Khoan   | Xác thực đăng nhập, phân quyền               | Thu_Thu       |
+  +-------------+----------------------------------------------+---------------+
+
+------------------------------------------------------------------------
+2b) Tương tác chi tiết trên đối tượng
+------------------------------------------------------------------------
+
+--- UC01 - Mượn sách ---
+
+@startuml
+actor Thu_Thu as "Actor: Thu_Thu"
+participant Doc_Gia
+participant Sach
+participant Phieu_Muon
+
+Thu_Thu -> Doc_Gia : timKiem(tuKhoa: String): DocGia[]
+Doc_Gia --> Thu_Thu : Danh sách kết quả
+Thu_Thu -> Doc_Gia : kiemTraHopLe(maDocGia): Boolean
+Doc_Gia --> Thu_Thu : isValid
+Thu_Thu -> Sach : timKiem(tuKhoa: String): Sach[]
+Sach --> Thu_Thu : Danh sách kết quả
+Thu_Thu -> Sach : kiemTraKhaDung(maSach): Boolean
+Sach --> Thu_Thu : isAvailable
+Thu_Thu -> Phieu_Muon : tao(maDocGia, maSach, ngayMuon, hanTra)
+Phieu_Muon --> Thu_Thu : Phieu_Muon
+Thu_Thu -> Sach : capNhatTrangThai(maSach, DA_MUON)
+Sach --> Thu_Thu : success
+@enduml
+
+--- UC02 - Trả sách ---
+
+@startuml
+actor Thu_Thu as "Actor: Thu_Thu"
+participant Phieu_Muon
+participant Sach
+
+Thu_Thu -> Phieu_Muon : timKiem(tuKhoa, loaiTim): PhieuMuon[]
+Phieu_Muon --> Thu_Thu : Danh sách phiếu đang mượn
+Thu_Thu -> Phieu_Muon : tinhPhat(hanTra: Date, ngayTra: Date): Number
+note right of Phieu_Muon : tienPhat = (ngayTra - hanTra) x 5000 nếu quá hạn
+Phieu_Muon --> Thu_Thu : tienPhat
+Thu_Thu -> Phieu_Muon : xacNhanTra(ngayTraThucTe, tienPhat, DA_TRA)
+Phieu_Muon --> Thu_Thu : success
+Thu_Thu -> Sach : capNhatTrangThai(maSach, SAN_SANG)
+Sach --> Thu_Thu : success
+@enduml
+
+--- UC03 - Gia hạn ---
+
+@startuml
+actor Thu_Thu as "Actor: Thu_Thu"
+participant Phieu_Muon
+
+Thu_Thu -> Phieu_Muon : layThongTin(maPhieu): PhieuMuon
+Phieu_Muon --> Thu_Thu : PhieuMuon
+Thu_Thu -> Phieu_Muon : kiemTraChoPhepGiaHan(): Boolean
+Phieu_Muon --> Thu_Thu : canExtend
+
+alt Được phép (DANG_MUON)
+    Thu_Thu -> Phieu_Muon : capNhatHanTra(hanTra + 7 ngày)
+    Phieu_Muon --> Thu_Thu : success
+else Không được phép
+    Phieu_Muon --> Thu_Thu : Lỗi
+end
+@enduml
+
+------------------------------------------------------------------------
+2c) Lược đồ lớp tổng quát lp-1
+------------------------------------------------------------------------
+
+@startuml
+class Sach
+class Doc_Gia
+class Phieu_Muon
+class Tai_Khoan
+
+Phieu_Muon --> Sach : tham chiếu maSach
+Phieu_Muon --> Doc_Gia : tham chiếu maDocGia
+Doc_Gia --> Tai_Khoan : liên kết tùy chọn
+@enduml
+
+------------------------------------------------------------------------
+2d) Định nghĩa chi tiết các lớp
+------------------------------------------------------------------------
+
+@startuml
+class Sach {
+    - maSach: String
+    - tieuDe: String
+    - tacGia: String
+    - tinhTrang: TinhTrangSach
+    + timKiem(tuKhoa): Sach[]
+    + kiemTraKhaDung(): Boolean
+    + capNhatTrangThai(trangThai): void
+}
+
+class Doc_Gia {
+    - maDocGia: String
+    - hoTen: String
+    - email: String
+    - soDienThoai: String
+    - ngayHetHan: Date
+    + timKiem(tuKhoa): DocGia[]
+    + kiemTraHopLe(): Boolean
+}
+
+class Phieu_Muon {
+    - maPhieu: String
+    - maDocGia: String
+    - maSach: String
+    - ngayMuon: Date
+    - hanTra: Date
+    - ngayTraThucTe: Date
+    - trangThai: TrangThaiPhieu
+    - tienPhat: Number
+    + tao(maDocGia, maSach, ngayMuon, hanTra): Phieu_Muon
+    + timKiem(tuKhoa, loaiTim): PhieuMuon[]
+    + tinhPhat(ngayTraThucTe): Number
+    + capNhatHanTra(hanTraMoi): void
+    + kiemTraChoPhepGiaHan(): Boolean
+    + xacNhanTra(ngayTra, tienPhat): void
+}
+
+class Tai_Khoan {
+    - maTaiKhoan: String
+    - tenDangNhap: String
+    - matKhau: String
+    - vaiTro: VaiTro
+    - trangThai: TrangThaiTaiKhoan
+    + dangNhap(tenDN, matKhau): Boolean
+    + dangXuat(): void
+}
+
+Phieu_Muon --> Sach : tham chiếu
+Phieu_Muon --> Doc_Gia : tham chiếu
+@enduml
+
+Enum Definitions:
+
+@startuml
+enum TinhTrangSach {
+    SAN_SANG
+    DA_MUON
+    BAO_TRI
+    MAT
+}
+enum TrangThaiPhieu {
+    DANG_MUON
+    DA_TRA
+}
+enum VaiTro {
+    THU_THU
+    QUAN_TRI_VIEN
+}
+enum TrangThaiTaiKhoan {
+    HOAT_DONG
+    BI_KHOA
+}
+@enduml
+
+Quy tắc nghiệp vụ:
+  1. Tiền phạt = soNgayQuaHan x 5000 VNĐ/ngày
+  2. Thời hạn mượn: 14 ngày
+  3. Gia hạn: +7 ngày vào hạn trả hiện tại
+  4. Mượn sách: tinhTrang phải = SAN_SANG
+  5. Gia hạn: trangThai phải = DANG_MUON
+  6. Xóa độc giả: không có phiếu DANG_MUON
+  7. Xóa sách: tinhTrang khác DA_MUON
+
+================================================================================
+PHẦN 3: THIẾT KẾ HỆ THỐNG
+================================================================================
+
+------------------------------------------------------------------------
+3a) Mô đun thiết kế
+------------------------------------------------------------------------
+
+Kiến trúc phân lớp 3 tầng:
+
+  +---------------------------------------------------------------+
+  |  Presentation Layer (Giao diện web SPA, tiếng Việt)           |
+  +---------------------------------------------------------------+
+           |
+  +---------------------------------------------------------------+
+  |  Business Logic Layer (Xử lý mượn/trả/gia hạn, quản lý,     |
+  |    tra cứu, xác thực, báo cáo)                               |
+  +---------------------------------------------------------------+
+           |
+  +---------------------------------------------------------------+
+  |  Data Access Layer (CSDL: Doc_Gia, Sach, Phieu_Muon,         |
+  |    Tai_Khoan)                                                 |
+  +---------------------------------------------------------------+
+
+Segmentation:
+  +-------------+--------------------------------------------------+
+  | Mô đun      | Đối tượng nghiệp vụ                             |
+  +-------------+--------------------------------------------------+
+  | mod-auth    | Tai_Khoan (đăng nhập, phân quyền)                |
+  | mod-borrow  | Phieu_Muon (mượn, trả, gia hạn, tính phạt)      |
+  | mod-reader  | Doc_Gia (quản lý độc giả)                        |
+  | mod-book    | Sach (quản lý sách, tra cứu)                     |
+  | mod-report  | Báo cáo (quá hạn, tình trạng kho)               |
+  +-------------+--------------------------------------------------+
+
+Factoring:
+
+@startuml
+package "mod-borrow" {
+    [Phieu_Muon]
+}
+package "mod-reader" {
+    [Doc_Gia]
+}
+package "mod-book" {
+    [Sach]
+}
+package "mod-report" {
+    [Bao_Cao]
+}
+
+[Phieu_Muon] --> [Doc_Gia] : Kiểm tra hợp lệ
+[Phieu_Muon] --> [Sach] : Cập nhật trạng thái
+[Bao_Cao] --> [Phieu_Muon] : Truy vấn
+[Bao_Cao] --> [Sach] : Truy vấn
+@enduml
+
+------------------------------------------------------------------------
+3b) Liên kết Giao diện - Xử lý - Database
+------------------------------------------------------------------------
+
+@startuml
+package "Giao diện" {
+    [Đăng nhập]
+    [Tổng quan & Báo cáo]
+    [Mượn sách]
+    [Trả sách]
+    [Gia hạn]
+    [Quản lý sách]
+    [Quản lý độc giả]
+}
+
+package "Xử lý" {
+    [Xác thực]
+    [XL Mượn/Trả/Gia hạn]
+    [XL Quản lý sách]
+    [XL Quản lý độc giả]
+    [XL Báo cáo]
+}
+
+database "CSDL" {
+    [Doc_Gia]
+    [Sach]
+    [Phieu_Muon]
+    [Tai_Khoan]
+}
+
+[Đăng nhập] --> [Xác thực]
+[Xác thực] --> [Tai_Khoan]
+[Mượn sách] --> [XL Mượn/Trả/Gia hạn]
+[Trả sách] --> [XL Mượn/Trả/Gia hạn]
+[Gia hạn] --> [XL Mượn/Trả/Gia hạn]
+[XL Mượn/Trả/Gia hạn] --> [Phieu_Muon]
+[XL Mượn/Trả/Gia hạn] --> [Sach]
+[Quản lý sách] --> [XL Quản lý sách]
+[XL Quản lý sách] --> [Sach]
+[Quản lý độc giả] --> [XL Quản lý độc giả]
+[XL Quản lý độc giả] --> [Doc_Gia]
+[Tổng quan & Báo cáo] --> [XL Báo cáo]
+[XL Báo cáo] --> [Phieu_Muon]
+[XL Báo cáo] --> [Sach]
+@enduml
+
+Lược đồ quan hệ dữ liệu:
+
+@startuml
+entity "DOC_GIA" {
+    * maDocGia : String <<PK>>
+    --
+    hoTen : String
+    email : String <<UK>>
+    soDienThoai : String
+    ngayHetHan : Date
+}
+
+entity "SACH" {
+    * maSach : String <<PK>>
+    --
+    tieuDe : String
+    tacGia : String
+    tinhTrang : TinhTrangSach
+}
+
+entity "PHIEU_MUON" {
+    * maPhieu : String <<PK>>
+    --
+    maDocGia : String <<FK>>
+    maSach : String <<FK>>
+    ngayMuon : Date
+    hanTra : Date
+    ngayTraThucTe : Date
+    trangThai : TrangThaiPhieu
+    tienPhat : Number
+}
+
+entity "TAI_KHOAN" {
+    * maTaiKhoan : String <<PK>>
+    --
+    tenDangNhap : String <<UK>>
+    matKhau : String
+    vaiTro : VaiTro
+    trangThai : TrangThaiTaiKhoan
+}
+
+DOC_GIA ||--o{ PHIEU_MUON : "có nhiều"
+SACH ||--o{ PHIEU_MUON : "được mượn trong"
+@enduml
+
+------------------------------------------------------------------------
+3c) Quy trình vận hành trên giao diện
+------------------------------------------------------------------------
+
+Layout: Sidebar trái (3 nhóm: Menu chính, Quản lý, Báo cáo) + Header + Nội dung
+
+Mượn sách - Wizard 3 bước:
+  Bước 1: Tìm độc giả (đa trường, không dấu) -> bảng kết quả -> Chọn
+  Bước 2: Tìm sách (đa trường, không dấu) -> bảng kết quả -> Chọn (chỉ SẴN SÀNG)
+  Bước 3: Xác nhận -> Phiếu mượn
+
+Trả sách - 2 bước:
+  Bước 1: Tìm phiếu (dropdown loại tìm + từ khóa) -> bảng phiếu + phạt -> Chọn
+  Bước 2: Xác nhận trả -> Kết quả (ngày trả, tiền phạt)
+
+Gia hạn - 2 bước:
+  Bước 1: Nhập mã phiếu -> Thông tin phiếu
+  Bước 2: Gia hạn +7 ngày -> Hạn trả mới
+
+Quản lý sách: Tìm kiếm + bảng CRUD + không xóa được sách đang mượn
+Quản lý độc giả: Bảng CRUD + không xóa được độc giả đang mượn
+Đăng nhập: Form tên đăng nhập + mật khẩu, phân quyền Thủ thư / Quản trị viên
+
+================================================================================
+KẾT THÚC BÁO CÁO
+================================================================================
