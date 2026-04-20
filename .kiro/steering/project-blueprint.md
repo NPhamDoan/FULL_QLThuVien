@@ -9,7 +9,7 @@ Hệ thống Quản lý Thư viện (Library Management System) - ứng dụng w
 | Frontend | React 19 + TypeScript, Ant Design 6, React Router 7, Axios, Vite |
 | Backend | Node.js + TypeScript, Express.js, dotenv |
 | Database | SQLite via better-sqlite3 (raw SQL, no ORM) |
-| Auth | bcrypt (password hashing), in-memory session store, Bearer token |
+| Auth | bcrypt (password hashing), login/logout only (no session middleware) |
 | Testing | Jest + fast-check (property-based testing) |
 
 ## Architecture
@@ -33,7 +33,6 @@ backend/
 ├── .env.sample           # Environment template
 ├── types/index.ts        # All enums, interfaces, DTOs
 ├── middleware/
-│   ├── auth.ts           # Session store, authMiddleware, requireRole
 │   └── logger.ts         # Request logging (LOG_LEVEL: debug|info|error|off)
 ├── utils/
 │   └── diacritics.ts     # removeDiacritics() - Vietnamese fuzzy search
@@ -45,7 +44,7 @@ backend/
 │   ├── TraCuuHeThongController.ts # Book search (diacritics-aware)
 │   └── BaoCaoController.ts      # Reports (overdue, inventory)
 ├── routes/               # Express route modules
-│   ├── authRoutes.ts     # POST /auth/login, /auth/logout
+│   ├── authRoutes.ts     # POST /auth/login, /auth/logout (no session middleware)
 │   ├── readerRoutes.ts   # CRUD + GET /readers/search?keyword= (diacritics-aware)
 │   ├── bookRoutes.ts     # CRUD + GET /books/search?keyword= (diacritics-aware)
 │   ├── loanRoutes.ts     # GET/POST /loans, POST /loans/:id/return, /extend
@@ -54,7 +53,6 @@ backend/
 │   ├── setup.test.ts
 │   ├── database.test.ts
 │   ├── controllers/      # 6 controller test files
-│   └── middleware/        # auth.test.ts
 ├── jest.config.ts        # Jest config (roots: tests/)
 ├── package.json
 └── tsconfig.json
@@ -70,9 +68,9 @@ frontend/src/
 │   ├── DashboardPage.tsx # Overview cards + tabs (loans, overdue, inventory)
 │   ├── BorrowPage.tsx    # 3-step: search reader table → search book table → confirm
 │   ├── ReturnPage.tsx    # Search loans (dropdown filter) → confirm return
-│   ├── ExtendPage.tsx    # Search loan → extend 7 days
-│   ├── ReadersPage.tsx   # Reader CRUD table + modal
-│   └── BooksPage.tsx     # Book CRUD table + search
+│   ├── ExtendPage.tsx    # Search loans (dropdown filter) → confirm extend +7 days
+│   ├── ReadersPage.tsx   # Reader CRUD table + search bar + modal
+│   └── BooksPage.tsx     # Book CRUD table + search + tinhTrang edit dropdown
 └── services/api.ts       # Axios instance + all API methods (incl. reader/book search)
 ```
 
@@ -133,11 +131,10 @@ Indexes: tieuDe, tacGia, PhieuMuon(maDocGia), PhieuMuon(maSach), PhieuMuon(trang
 
 ## Authentication Flow
 
-1. POST /auth/login → bcrypt verify → create in-memory session → return user info
+1. POST /auth/login → bcrypt verify → return user info (no server session)
 2. Frontend stores `{ maTaiKhoan, tenDangNhap, vaiTro }` in localStorage key `lms_user`
 3. Axios interceptor auto-attaches `Authorization: Bearer {maTaiKhoan}` to all requests
-4. Backend authMiddleware validates token against sessionStore Map
-5. requireRole middleware checks vaiTro for protected routes
+4. All API routes are public (no server-side auth middleware)
 
 ## Business Rules
 
@@ -194,6 +191,9 @@ Dự án sử dụng tiếng Việt cho tên entities, fields, UI labels:
 - Frontend uses Ant Design components (Table, Form, Modal, Card, Tabs)
 - BorrowPage: search table pattern (search → table → select) for both reader and book steps
 - ReturnPage: dropdown filter + search table for loan lookup
+- ExtendPage: dropdown filter + search table for loan lookup (same as ReturnPage)
+- BooksPage: edit modal includes tinhTrang dropdown (SAN_SANG/BAO_TRI/MAT, DA_MUON disabled)
+- ReadersPage: search bar (keyword search, diacritics-aware) + CRUD modal with DatePicker for ngayHetHan
 - Error handling: controllers return `{ success, error?, data? }` pattern
 - Request logging: middleware/logger.ts with LOG_LEVEL env control
 - Diacritics: shared utils/diacritics.ts used by reader search, book search, TraCuuHeThongController
