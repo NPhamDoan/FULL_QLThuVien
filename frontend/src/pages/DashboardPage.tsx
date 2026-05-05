@@ -11,6 +11,7 @@ import {
 } from '@ant-design/icons';
 import { bookApi, readerApi, reportApi, loanApi } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { VaiTro } from '../constants';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -124,7 +125,7 @@ export default function DashboardPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <Text type="secondary" style={{ fontSize: 13 }}>
-            {user?.vaiTro === 'QUAN_TRI_VIEN' ? 'Quản trị viên' : 'Thủ thư'} • {today}
+            {user?.vaiTro === VaiTro.QUAN_TRI_VIEN ? 'Quản trị viên' : 'Thủ thư'} • {today}
           </Text>
         </div>
       </div>

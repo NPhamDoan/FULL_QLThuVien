@@ -4,40 +4,45 @@ import { Layout, Avatar, Dropdown, Typography } from 'antd';
 import {
   BookOutlined, ImportOutlined, ExportOutlined, HistoryOutlined,
   TeamOutlined, BarChartOutlined, LogoutOutlined, UserOutlined,
-  SettingOutlined, ReadOutlined,
+  SettingOutlined, ReadOutlined, KeyOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
+import { VaiTro } from '../constants';
 
 const { Content, Sider } = Layout;
 
-const menuSections = [
-  {
-    label: 'MENU CHÍNH',
-    items: [
-      { key: '/borrow', icon: <ImportOutlined />, label: 'Mượn sách' },
-      { key: '/return', icon: <ExportOutlined />, label: 'Trả sách' },
-      { key: '/extend', icon: <HistoryOutlined />, label: 'Gia hạn' },
-    ],
-  },
-  {
-    label: 'QUẢN LÝ',
-    items: [
-      { key: '/books', icon: <BookOutlined />, label: 'Sách' },
-      { key: '/readers', icon: <TeamOutlined />, label: 'Độc giả' },
-    ],
-  },
-  {
-    label: 'BÁO CÁO & THỐNG KÊ',
-    items: [
-      { key: '/', icon: <BarChartOutlined />, label: 'Tổng quan' },
-    ],
-  },
-];
+const getMenuSections = (vaiTro?: string) => {
+  const sections = [
+    {
+      label: 'MENU CHÍNH',
+      items: [
+        { key: '/borrow', icon: <ImportOutlined />, label: 'Mượn sách' },
+        { key: '/return', icon: <ExportOutlined />, label: 'Trả sách' },
+        { key: '/extend', icon: <HistoryOutlined />, label: 'Gia hạn' },
+      ],
+    },
+    {
+      label: 'QUẢN LÝ',
+      items: [
+        { key: '/books', icon: <BookOutlined />, label: 'Sách' },
+        { key: '/readers', icon: <TeamOutlined />, label: 'Độc giả' },
+        ...(vaiTro === VaiTro.QUAN_TRI_VIEN ? [{ key: '/accounts', icon: <KeyOutlined />, label: 'Tài khoản' }] : []),
+      ],
+    },
+    {
+      label: 'BÁO CÁO & THỐNG KÊ',
+      items: [
+        { key: '/', icon: <BarChartOutlined />, label: 'Tổng quan' },
+      ],
+    },
+  ];
+  return sections;
+};
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Báo cáo & Thống kê', '/borrow': 'Mượn sách', '/return': 'Trả sách',
   '/extend': 'Gia hạn', '/books': 'Quản lý sách',
-  '/readers': 'Quản lý độc giả',
+  '/readers': 'Quản lý độc giả', '/accounts': 'Quản lý tài khoản',
 };
 
 export default function MainLayout() {
@@ -87,7 +92,7 @@ export default function MainLayout() {
 
         {/* Menu */}
         <div style={{ padding: '12px 0' }}>
-          {menuSections.map((section) => (
+          {getMenuSections(user?.vaiTro).map((section) => (
             <div key={section.label} style={{ marginBottom: 8 }}>
               {!collapsed && (
                 <div style={{
@@ -145,7 +150,7 @@ export default function MainLayout() {
           <Dropdown
             menu={{
               items: [
-                { key: 'info', label: (<div><div style={{ fontWeight: 600 }}>{user?.tenDangNhap}</div><div style={{ fontSize: 12, color: '#94A3B8' }}>{user?.vaiTro === 'QUAN_TRI_VIEN' ? 'Quản trị viên' : 'Thủ thư'}</div></div>), disabled: true },
+                { key: 'info', label: (<div><div style={{ fontWeight: 600 }}>{user?.tenDangNhap}</div><div style={{ fontSize: 12, color: '#94A3B8' }}>{user?.vaiTro === VaiTro.QUAN_TRI_VIEN ? 'Quản trị viên' : 'Thủ thư'}</div></div>), disabled: true },
                 { type: 'divider' },
                 { key: 'logout', icon: <LogoutOutlined />, label: 'Đăng xuất', danger: true, onClick: handleLogout },
               ],
@@ -162,7 +167,7 @@ export default function MainLayout() {
                 <div style={{ overflow: 'hidden' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', whiteSpace: 'nowrap' }}>{user?.tenDangNhap}</div>
                   <div style={{ fontSize: 11, color: '#94A3B8', whiteSpace: 'nowrap' }}>
-                    {user?.vaiTro === 'QUAN_TRI_VIEN' ? 'Quản trị viên' : 'Thủ thư'}
+                    {user?.vaiTro === VaiTro.QUAN_TRI_VIEN ? 'Quản trị viên' : 'Thủ thư'}
                   </div>
                 </div>
               )}

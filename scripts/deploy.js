@@ -24,18 +24,32 @@ function copyDir(src, dest) {
 
 console.log('=== Building Library Management System ===\n');
 
-// 1. Build backend
-console.log('[1/4] Building backend...');
+// 1. Install dependencies
+console.log('[1/5] Installing backend dependencies...');
+run('npm install', path.join(__dirname, '..', 'backend'));
+
+console.log('\n[2/5] Installing frontend dependencies...');
+run('npm install', path.join(__dirname, '..', 'frontend'));
+
+// 3. Build backend
+console.log('\n[3/5] Building backend...');
 run('npx tsc', path.join(__dirname, '..', 'backend'));
 
-// 2. Build frontend
-console.log('\n[2/4] Building frontend...');
+// 4. Build frontend
+console.log('\n[4/5] Building frontend...');
 run('npm run build', path.join(__dirname, '..', 'frontend'));
 
-// 3. Clean and create Deploy folder
-console.log('\n[3/4] Creating Deploy folder...');
+// 5. Clean and create Deploy folder
+console.log('\n[5/5] Creating Deploy folder...');
 if (fs.existsSync(DEPLOY_DIR)) {
-  fs.rmSync(DEPLOY_DIR, { recursive: true });
+  try {
+    fs.rmSync(DEPLOY_DIR, { recursive: true, force: true });
+  } catch (err) {
+    console.error(`\nERROR: Cannot delete Deploy folder.`);
+    console.error(`Make sure no terminal, explorer, or process is open inside "${DEPLOY_DIR}"`);
+    console.error(`Then try again.\n`);
+    process.exit(1);
+  }
 }
 fs.mkdirSync(DEPLOY_DIR, { recursive: true });
 
@@ -54,7 +68,7 @@ const prodPkg = {
   description: pkg.description,
   main: 'backend/dist/index.js',
   scripts: {
-    start: 'node backend/dist/index.js',
+    start: 'node --no-deprecation backend/dist/index.js',
     seed: 'node backend/dist/seed.js',
   },
   dependencies: pkg.dependencies,
@@ -68,8 +82,7 @@ if (fs.existsSync(path.join(__dirname, '..', 'backend', 'package-lock.json'))) {
   );
 }
 
-// 4. Create start scripts
-console.log('\n[4/4] Creating start scripts...');
+// Create start scripts
 
 // Windows batch file
 fs.writeFileSync(path.join(DEPLOY_DIR, 'start.bat'),
@@ -79,23 +92,15 @@ echo.
 
 if not exist node_modules (
   echo Installing dependencies...
-  npm install --production
-  echo.
-)
-
-if not exist backend\\Database\\dev.db (
-  echo Creating sample data...
-  node backend/dist/seed.js
+  call npm install --omit=dev
   echo.
 )
 
 echo Starting server on http://localhost:3000
 echo Press Ctrl+C to stop
 echo.
-node backend/dist/index.js
+node --no-deprecation backend/dist/index.js
 `);
-
-// Linux/Mac shell script
 fs.writeFileSync(path.join(DEPLOY_DIR, 'start.sh'),
 `#!/bin/bash
 echo "=== Thu Vien Management System ==="
@@ -103,20 +108,14 @@ echo
 
 if [ ! -d "node_modules" ]; then
   echo "Installing dependencies..."
-  npm install --production
-  echo
-fi
-
-if [ ! -f "backend/Database/dev.db" ]; then
-  echo "Creating sample data..."
-  node backend/dist/seed.js
+  npm install --omit=dev
   echo
 fi
 
 echo "Starting server on http://localhost:3000"
 echo "Press Ctrl+C to stop"
 echo
-node backend/dist/index.js
+node --no-deprecation backend/dist/index.js
 `);
 
 // README

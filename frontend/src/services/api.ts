@@ -31,6 +31,19 @@ export const authApi = {
     api.post('/auth/logout', { maTaiKhoan }),
 };
 
+// Account Management APIs
+export const accountApi = {
+  list: () => api.get('/auth/accounts'),
+  create: (data: { tenDangNhap: string; matKhau: string; vaiTro: string }) =>
+    api.post('/auth/accounts', data),
+  updateStatus: (id: string, trangThai: string) =>
+    api.put(`/auth/accounts/${id}/status`, { trangThai }),
+  resetPassword: (id: string, matKhau: string) =>
+    api.put(`/auth/accounts/${id}/password`, { matKhau }),
+  delete: (id: string) =>
+    api.delete(`/auth/accounts/${id}`),
+};
+
 // Book APIs
 export const bookApi = {
   list: () =>

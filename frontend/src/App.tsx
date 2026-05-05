@@ -11,6 +11,7 @@ import ReturnPage from './pages/ReturnPage';
 import ExtendPage from './pages/ExtendPage';
 import ReadersPage from './pages/ReadersPage';
 import BooksPage from './pages/BooksPage';
+import AccountsPage from './pages/AccountsPage';
 
 export default function App() {
   return (
@@ -56,6 +57,7 @@ export default function App() {
                 <Route path="/extend" element={<ExtendPage />} />
                 <Route path="/readers" element={<ReadersPage />} />
                 <Route path="/books" element={<BooksPage />} />
+                <Route path="/accounts" element={<AccountsPage />} />
               </Route>
             </Route>
 

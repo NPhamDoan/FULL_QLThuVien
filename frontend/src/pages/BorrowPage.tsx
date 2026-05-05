@@ -10,6 +10,7 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { readerApi, bookApi, loanApi } from '../services/api';
+import { TinhTrangSach } from '../constants';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -130,7 +131,7 @@ export default function BorrowPage() {
   const handleShowAllBooks = () => { setBookKeyword(''); handleSearchBooks(''); };
 
   const handleSelectBook = (b: BookInfo) => {
-    if (b.tinhTrang !== 'SAN_SANG') {
+    if (b.tinhTrang !== TinhTrangSach.SAN_SANG) {
       setBookError(`Sách "${b.tieuDe}" không khả dụng (${TINH_TRANG[b.tinhTrang]?.label || b.tinhTrang})`);
       return;
     }
@@ -198,7 +199,7 @@ export default function BorrowPage() {
     { title: '', key: 'action', width: 90,
       render: (_: unknown, b: BookInfo) => (
         <Button type="primary" size="small" onClick={() => handleSelectBook(b)}
-          disabled={b.tinhTrang !== 'SAN_SANG'} style={{ borderRadius: 8 }}>
+          disabled={b.tinhTrang !== TinhTrangSach.SAN_SANG} style={{ borderRadius: 8 }}>
           Chọn
         </Button>
       ),

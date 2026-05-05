@@ -1,8 +1,9 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { type VaiTroType } from '../constants';
 
 interface ProtectedRouteProps {
-  requiredRole?: 'THU_THU' | 'QUAN_TRI_VIEN';
+  requiredRole?: VaiTroType;
 }
 
 export default function ProtectedRoute({ requiredRole }: ProtectedRouteProps) {

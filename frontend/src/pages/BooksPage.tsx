@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Table, Button, Modal, Form, Input, Alert, Popconfirm, Space, Tag, Select, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { bookApi } from '../services/api';
+import { TinhTrangSach } from '../constants';
 import axios from 'axios';
 
 interface BookRecord {
@@ -237,10 +238,10 @@ export default function BooksPage() {
             <Form.Item name="tinhTrang" label="Tình trạng">
               <Select
                 options={[
-                  { value: 'SAN_SANG', label: 'Sẵn sàng' },
-                  { value: 'DA_MUON', label: 'Đã mượn', disabled: true },
-                  { value: 'BAO_TRI', label: 'Bảo trì' },
-                  { value: 'MAT', label: 'Mất' },
+                  { value: TinhTrangSach.SAN_SANG, label: 'Sẵn sàng' },
+                  { value: TinhTrangSach.DA_MUON, label: 'Đã mượn', disabled: true },
+                  { value: TinhTrangSach.BAO_TRI, label: 'Bảo trì' },
+                  { value: TinhTrangSach.MAT, label: 'Mất' },
                 ]}
               />
             </Form.Item>

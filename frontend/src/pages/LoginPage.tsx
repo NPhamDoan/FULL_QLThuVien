@@ -36,7 +36,7 @@ export default function LoginPage() {
   return (
     <div style={{
       minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-      background: '#F1F5F9', padding: 40,
+      background: '#fff', padding: 40,
     }}>
       <div style={{
         display: 'flex', maxWidth: 960, width: '100%',
@@ -50,19 +50,18 @@ export default function LoginPage() {
           flex: 1, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center',
           padding: '48px 40px',
-          background: 'linear-gradient(180deg, #F8FAFC 0%, #E2E8F0 100%)',
+          background: '#fff',
           position: 'relative', overflow: 'hidden',
         }}>
           {/* Decorative blob */}
-          <svg viewBox="0 0 400 400" style={{ position: 'absolute', width: '120%', height: '120%', opacity: 0.3 }}>
-            <path d="M200,20 C300,20 380,100 380,200 C380,300 300,380 200,380 C100,380 20,300 20,200 C20,100 100,20 200,20 Z"
-              fill="#99F6E4" />
+          <svg viewBox="0 0 400 400" style={{ position: 'absolute', width: '90%', height: '90%', opacity: 0.3 }}>
+            <circle cx="200" cy="200" r="180" fill="#99F6E4" />
           </svg>
 
           {/* Book illustration using SVG */}
           <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', animation: 'fadeInUp 0.6s ease-out 0.1s both' }}>
             <img
-              src="/ptit.png"
+              src="/book-illustration.svg"
               alt="PTIT Logo"
               width={220}
               height={180}
@@ -143,7 +142,12 @@ export default function LoginPage() {
 
           <div style={{ textAlign: 'center', marginTop: 16 }}>
             <Text style={{ color: '#A8A29E', fontSize: 13 }}>
-              Tài khoản mẫu: <span style={{ color: '#0F766E', fontWeight: 600 }}>thuthu</span> / <span style={{ color: '#0F766E', fontWeight: 600 }}>123456</span>
+              Tài khoản mẫu 1: <span style={{ color: '#0F766E', fontWeight: 600 }}>thuthu</span> / <span style={{ color: '#0F766E', fontWeight: 600 }}>123456</span>
+            </Text>
+            </div>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <Text style={{ color: '#A8A29E', fontSize: 13 }}>
+              Tài khoản mẫu 2: <span style={{ color: '#0F766E', fontWeight: 600 }}>admin</span> / <span style={{ color: '#0F766E', fontWeight: 600 }}>123456</span>
             </Text>
           </div>
         </div>
