@@ -112,7 +112,9 @@ export class PhieuMuonController {
 
   createLoan(maDocGia: string, maSach: string): PhieuMuon {
     const createLoanTx = this.db.transaction(() => {
-      const maPhieu = 'PM' + Date.now();
+      const last = this.db.prepare("SELECT maPhieu FROM PhieuMuon WHERE maPhieu LIKE 'PM%' ORDER BY CAST(SUBSTR(maPhieu, 3) AS INTEGER) DESC LIMIT 1").get() as { maPhieu: string } | undefined;
+      const nextNum = last ? parseInt(last.maPhieu.substring(2)) + 1 : 1;
+      const maPhieu = 'PM' + String(nextNum).padStart(3, '0');
       const ngayMuon = new Date().toISOString().split('T')[0];
       const hanTraDate = new Date();
       hanTraDate.setDate(hanTraDate.getDate() + 14);

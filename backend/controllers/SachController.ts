@@ -16,7 +16,9 @@ export class SachController {
       throw new Error('tacGia là trường bắt buộc');
     }
 
-    const maSach = 'S' + Date.now();
+    const last = this.db.prepare("SELECT maSach FROM Sach WHERE maSach LIKE 'S%' ORDER BY CAST(SUBSTR(maSach, 2) AS INTEGER) DESC LIMIT 1").get() as { maSach: string } | undefined;
+    const nextNum = last ? parseInt(last.maSach.substring(1)) + 1 : 1;
+    const maSach = 'S' + String(nextNum).padStart(3, '0');
 
     this.db.prepare(`
       INSERT INTO Sach (maSach, tieuDe, tacGia)

@@ -16,7 +16,9 @@ export class DocGiaController {
       throw new Error('email là trường bắt buộc');
     }
 
-    const maDocGia = 'DG' + Date.now();
+    const last = this.db.prepare("SELECT maDocGia FROM DocGia WHERE maDocGia LIKE 'DG%' ORDER BY CAST(SUBSTR(maDocGia, 3) AS INTEGER) DESC LIMIT 1").get() as { maDocGia: string } | undefined;
+    const nextNum = last ? parseInt(last.maDocGia.substring(2)) + 1 : 1;
+    const maDocGia = 'DG' + String(nextNum).padStart(3, '0');
     const ngayHetHan = data.ngayHetHan instanceof Date
       ? data.ngayHetHan.toISOString()
       : String(data.ngayHetHan);
