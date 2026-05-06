@@ -1,23 +1,20 @@
-# BÁO CÁO PHÂN TÍCH VÀ THIẾT KẾ HỆ THỐNG QUẢN LÝ THƯ VIỆN
+# BÁO CÁO PHÂN TÍCH VÀ THIẾT KẾ - 3 USE CASE CHÍNH
 
-Hệ thống Quản lý Thư viện (Library Management System) là phần mềm (PM) hỗ trợ thủ thư và quản trị viên trong việc quản lý sách, mượn/trả sách, tra cứu, thống kê và quản lý tài khoản. Hệ thống thay thế quy trình thủ công bằng cơ sở dữ liệu tập trung.
+Hệ thống Quản lý Thư viện (Library Management System) - Phân tích 3 chức năng nghiệp vụ chính: Mượn sách, Trả sách, Gia hạn.
 
 ## Bảng thuật ngữ
 
 | Ký hiệu | Ý nghĩa |
 |----------|---------|
 | PM | Phần mềm Quản lý Thư viện |
-| He_Thong | Hệ thống quản lý thư viện |
 | Thu_Thu | Thủ thư - nhân viên thư viện |
-| Quan_Tri | Quản trị viên - người quản lý hệ thống |
 | Doc_Gia | Độc giả - người sử dụng dịch vụ |
 | Sach | Đối tượng sách (mã, tiêu đề, tác giả, tình trạng) |
 | Phieu_Muon | Bản ghi mượn sách (mã phiếu, ngày mượn, hạn trả, tiền phạt) |
-| Tai_Khoan | Tài khoản đăng nhập hệ thống |
 | So_Muon_Tra | Sổ ghi chép mượn trả sách (thủ công) |
 | The_Doc_Gia | Thẻ độc giả vật lý |
 
-**4 Use Case chính:** UC01: Mượn sách | UC02: Trả sách | UC03: Gia hạn mượn sách | UC04: Quản lý tài khoản
+**3 Use Case:** UC01: Mượn sách | UC02: Trả sách | UC03: Gia hạn mượn sách
 
 ---
 
@@ -30,8 +27,6 @@ Hệ thống Quản lý Thư viện (Library Management System) là phần mềm
 **UC02 - Trả sách:** Thủ thư đối chiếu phiếu mượn với sổ, kiểm tra hạn trả, tính tiền phạt thủ công (số ngày quá hạn × đơn giá), ghi ngày trả vào sổ, thu tiền phạt.
 
 **UC03 - Gia hạn:** Thủ thư tra sổ tìm bản ghi, gạch hạn trả cũ và ghi hạn trả mới (+7 ngày).
-
-**UC04 - Quản lý tài khoản:** Không có trong mô hình cũ (chỉ 1 người quản lý).
 
 ### Lược đồ cộng tác - Mô hình cũ
 
@@ -53,8 +48,7 @@ flowchart LR
 
 ## 1b) Mô hình vận hành mới có PM
 
-**Actors:** Thu_Thu, Quan_Tri, Doc_Gia, PM (He_Thong)
-**Use Case hỗ trợ:** Đăng nhập, Xác nhận giao dịch, Phân quyền
+**Actors:** Thu_Thu, Doc_Gia, PM (Hệ thống)
 
 ### UC01: Mượn sách (Có PM)
 
@@ -72,7 +66,7 @@ sequenceDiagram
     actor DG as Actor: Doc_Gia
     actor TT as Actor: Thu_Thu
     participant PM as PM
-    
+
     DG->>TT: Đưa thẻ độc giả + sách
     TT->>PM: Tìm kiếm độc giả (mã/tên/email/SĐT)
     PM-->>TT: Hiển thị danh sách kết quả
@@ -125,7 +119,7 @@ sequenceDiagram
     actor DG as Actor: Doc_Gia
     actor TT as Actor: Thu_Thu
     participant PM as PM
-    
+
     DG->>TT: Đưa sách cần trả
     TT->>PM: Tìm phiếu mượn (dropdown: tên ĐG/tên sách/mã phiếu)
     PM-->>TT: Danh sách phiếu đang mượn + phạt ước tính
@@ -166,7 +160,7 @@ stateDiagram-v2
 sequenceDiagram
     actor TT as Actor: Thu_Thu
     participant PM as PM
-    
+
     TT->>PM: Tìm phiếu mượn (dropdown: tên ĐG/tên sách/mã phiếu)
     PM-->>TT: Danh sách phiếu đang mượn
     TT->>PM: Chọn phiếu
@@ -182,44 +176,9 @@ sequenceDiagram
     end
 ```
 
-### UC04: Quản lý tài khoản (Có PM - Chỉ Quản trị viên)
+**Ưu điểm PM:** Xử lý 3-5 giây, tự động validate, tính phạt chính xác, tìm kiếm không dấu
 
-1. Quản trị viên đăng nhập → PM kiểm tra vaiTro = QUAN_TRI_VIEN
-2. Quản trị viên truy cập trang Tài khoản → PM hiển thị danh sách tài khoản
-3. Quản trị viên có thể: Tạo mới, Khóa/Mở khóa, Đổi mật khẩu, Xóa tài khoản
-
-```mermaid
-sequenceDiagram
-    actor QT as Actor: Quan_Tri
-    participant PM as PM
-    
-    QT->>PM: Truy cập /accounts
-    PM->>PM: Kiểm tra Authorization header
-    alt Không phải admin
-        PM-->>QT: 403 Forbidden
-    else Là admin
-        PM-->>QT: Danh sách tài khoản
-        alt Tạo mới
-            QT->>PM: Tạo (tenDangNhap, matKhau, vaiTro)
-            PM->>PM: Hash mật khẩu + Tạo mã TK
-            PM-->>QT: Tài khoản mới
-        else Khóa/Mở khóa
-            QT->>PM: Cập nhật trạng thái
-            PM-->>QT: Thành công
-        else Đổi mật khẩu
-            QT->>PM: Đặt mật khẩu mới
-            PM->>PM: Hash mật khẩu mới
-            PM-->>QT: Thành công
-        else Xóa
-            QT->>PM: Xóa tài khoản
-            PM-->>QT: Thành công
-        end
-    end
-```
-
-**Ưu điểm PM:** Xử lý 3-5 giây, tự động validate, tính phạt chính xác, tìm kiếm không dấu, báo cáo tức thì, phân quyền rõ ràng
-
-**Khuyết điểm PM:** Cần đầu tư ban đầu, phụ thuộc điện/máy tính, cần bảo trì
+**Khuyết điểm PM:** Cần đầu tư ban đầu, phụ thuộc điện/máy tính
 
 | Tiêu chí | Thủ công | Có PM |
 |----------|---------|-------|
@@ -227,7 +186,6 @@ sequenceDiagram
 | Tra cứu | 5-15 phút | < 2 giây |
 | Tính phạt | Thủ công, dễ sai | Tự động |
 | Phát hiện quá hạn | Rất khó | Tự động |
-| Phân quyền | Không có | Admin/Thủ thư |
 
 ---
 
@@ -238,14 +196,12 @@ sequenceDiagram
 **UC01:** Doc_Gia (kiểm tra hợp lệ), Sach (kiểm tra khả dụng), Phieu_Muon (tạo bản ghi)
 **UC02:** Phieu_Muon (tìm, cập nhật, tính phạt), Sach (cập nhật trạng thái)
 **UC03:** Phieu_Muon (tìm, kiểm tra điều kiện, cập nhật hạn trả)
-**UC04:** Tai_Khoan (CRUD, phân quyền, hash mật khẩu)
 
 | Lớp | Trách nhiệm | Cộng tác |
 |-----|------------|---------|
-| Sach | Lưu trữ thông tin sách, CRUD, tìm kiếm (không dấu), cập nhật trạng thái | Phieu_Muon |
-| Doc_Gia | Lưu trữ thông tin độc giả, CRUD, tìm kiếm (không dấu), kiểm tra hạn thẻ | Phieu_Muon |
+| Sach | Lưu trữ thông tin sách, tìm kiếm (không dấu), cập nhật trạng thái | Phieu_Muon |
+| Doc_Gia | Lưu trữ thông tin độc giả, tìm kiếm (không dấu), kiểm tra hạn thẻ | Phieu_Muon |
 | Phieu_Muon | Ghi nhận mượn sách, tính phạt, gia hạn, tìm kiếm | Sach, Doc_Gia |
-| Tai_Khoan | Xác thực đăng nhập, phân quyền, CRUD tài khoản, hash mật khẩu | Thu_Thu, Quan_Tri |
 
 ## 2b) Tương tác chi tiết trên đối tượng
 
@@ -257,7 +213,7 @@ sequenceDiagram
     participant DG as Doc_Gia
     participant S as Sach
     participant PM as Phieu_Muon
-    
+
     TT->>DG: timKiem(tuKhoa: String): DocGia[]
     DG-->>TT: Danh sách kết quả
     TT->>DG: kiemTraHopLe(maDocGia): Boolean
@@ -278,7 +234,7 @@ sequenceDiagram
     actor TT as Actor: Thu_Thu
     participant PM as Phieu_Muon
     participant S as Sach
-    
+
     TT->>PM: timKiem(tuKhoa, loaiTim): PhieuMuon[]
     PM-->>TT: Danh sách phiếu đang mượn
     TT->>PM: xacNhanTra(maPhieu)
@@ -294,7 +250,7 @@ sequenceDiagram
 sequenceDiagram
     actor TT as Actor: Thu_Thu
     participant PM as Phieu_Muon
-    
+
     TT->>PM: timKiem(tuKhoa, loaiTim): PhieuMuon[]
     PM-->>TT: Danh sách phiếu đang mượn
     TT->>PM: giaHan(maPhieu)
@@ -307,33 +263,12 @@ sequenceDiagram
     end
 ```
 
-### UC04 - Quản lý tài khoản
-
-```mermaid
-sequenceDiagram
-    actor QT as Actor: Quan_Tri
-    participant TK as Tai_Khoan
-    
-    QT->>TK: kiemTraQuyen(maTaiKhoan, QUAN_TRI_VIEN): Boolean
-    TK-->>QT: isAdmin
-    alt Không phải admin
-        TK-->>QT: 403 Forbidden
-    else Là admin
-        QT->>TK: danhSachTaiKhoan(): TaiKhoan[]
-        TK-->>QT: Danh sách
-        QT->>TK: taoTaiKhoan(tenDN, matKhau, vaiTro)
-        TK->>TK: bcrypt.hash(matKhau)
-        TK-->>QT: {maTaiKhoan}
-    end
-```
-
 ## 2c) Lược đồ lớp tổng quát lp-1
 
 ```mermaid
 classDiagram
     Phieu_Muon --> Sach : tham chiếu maSach
     Phieu_Muon --> Doc_Gia : tham chiếu maDocGia
-    Tai_Khoan --> Tai_Khoan : quản lý (admin)
 ```
 
 ## 2d) Định nghĩa chi tiết các lớp
@@ -347,11 +282,8 @@ classDiagram
         - tinhTrang: TinhTrangSach
         - createdAt: DateTime
         - updatedAt: DateTime
-        + danhSach(): Sach[]
         + timKiem(tuKhoa): Sach[]
-        + tao(tieuDe, tacGia): Sach
-        + capNhat(maSach, data): void
-        + xoa(maSach): DeleteResult
+        + kiemTraKhaDung(): Boolean
         + capNhatTrangThai(trangThai): void
     }
     class Doc_Gia {
@@ -362,11 +294,7 @@ classDiagram
         - ngayHetHan: Date
         - createdAt: DateTime
         - updatedAt: DateTime
-        + danhSach(): DocGia[]
         + timKiem(tuKhoa): DocGia[]
-        + tao(hoTen, email, sdt, ngayHetHan): DocGia
-        + capNhat(maDocGia, data): void
-        + xoa(maDocGia): DeleteResult
         + kiemTraHopLe(): Boolean
     }
     class Phieu_Muon {
@@ -380,28 +308,11 @@ classDiagram
         - tienPhat: Number
         - createdAt: DateTime
         - updatedAt: DateTime
-        + danhSach(search, searchType): PhieuMuon[]
         + tao(maDocGia, maSach): PhieuMuon [Transaction]
+        + timKiem(tuKhoa, loaiTim): PhieuMuon[]
         + traSach(maPhieu): ReturnResult
         + giaHan(maPhieu): PhieuMuon
         + tinhPhat(hanTra, ngayTra): Number
-    }
-    class Tai_Khoan {
-        - maTaiKhoan: String
-        - tenDangNhap: String
-        - matKhau: String (bcrypt hash)
-        - vaiTro: VaiTro
-        - trangThai: TrangThaiTaiKhoan
-        - createdAt: DateTime
-        - updatedAt: DateTime
-        + dangNhap(tenDN, matKhau): LoginResult
-        + dangXuat(maTaiKhoan): void
-        + kiemTraQuyen(maTaiKhoan, quyen): Boolean
-        + danhSachTaiKhoan(): TaiKhoan[]
-        + taoTaiKhoan(tenDN, matKhau, vaiTro): TaiKhoan
-        + capNhatTrangThai(maTK, trangThai): void
-        + doiMatKhau(maTK, matKhauMoi): void
-        + xoaTaiKhoan(maTK): void
     }
     Phieu_Muon --> Sach : tham chiếu
     Phieu_Muon --> Doc_Gia : tham chiếu
@@ -421,16 +332,6 @@ classDiagram
         DANG_MUON
         DA_TRA
     }
-    class VaiTro {
-        <<enumeration>>
-        THU_THU
-        QUAN_TRI_VIEN
-    }
-    class TrangThaiTaiKhoan {
-        <<enumeration>>
-        HOAT_DONG
-        BI_KHOA
-    }
 ```
 
 **Quy tắc nghiệp vụ:**
@@ -439,11 +340,7 @@ classDiagram
 3. Gia hạn: +7 ngày vào hạn trả hiện tại
 4. Mượn sách: tinhTrang phải = SAN_SANG
 5. Gia hạn: trangThai phải = DANG_MUON
-6. Xóa độc giả: không có phiếu DANG_MUON
-7. Xóa sách: tinhTrang ≠ DA_MUON
-8. Quản lý tài khoản: chỉ vaiTro = QUAN_TRI_VIEN mới được phép
-9. Mật khẩu: hash bằng bcrypt (10 rounds)
-10. Tạo phiếu mượn: sử dụng database transaction (atomic)
+6. Tạo phiếu mượn: sử dụng database transaction (atomic)
 
 ---
 
@@ -454,26 +351,21 @@ classDiagram
 Kiến trúc phân lớp:
 
 ```
-  Frontend (React SPA)  →  Axios (/api proxy dev)  →  Express API (port 3000)  →  SQLite
+  Giao diện (Web SPA)  →  Xử lý nghiệp vụ  →  CSDL (SQLite)
 ```
 
 **Segmentation:**
 
-| Mô đun | Đối tượng nghiệp vụ | API Routes |
-|--------|---------------------|------------|
-| mod-auth | Tai_Khoan (đăng nhập, phân quyền, CRUD tài khoản) | /auth/* |
-| mod-borrow | Phieu_Muon (mượn, trả, gia hạn, tính phạt) | /loans/* |
-| mod-reader | Doc_Gia (CRUD, tìm kiếm không dấu) | /readers/* |
-| mod-book | Sach (CRUD, tìm kiếm không dấu) | /books/* |
-| mod-report | Báo cáo (quá hạn, tình trạng kho) | /reports/* |
+| Mô đun | Đối tượng nghiệp vụ |
+|--------|---------------------|
+| mod-borrow | Phieu_Muon (mượn, trả, gia hạn, tính phạt) |
+| mod-reader | Doc_Gia (tìm kiếm, kiểm tra hợp lệ) |
+| mod-book | Sach (tìm kiếm, cập nhật trạng thái) |
 
 **Factoring:**
 
 ```mermaid
 flowchart TB
-    subgraph mod-auth
-        TK[Tai_Khoan]
-    end
     subgraph mod-borrow
         PM[Phieu_Muon]
     end
@@ -483,57 +375,38 @@ flowchart TB
     subgraph mod-book
         S[Sach]
     end
-    subgraph mod-report
-        BC[Bao_Cao]
-    end
-    TK -->|Phân quyền| PM
-    TK -->|Phân quyền| TK
     PM -->|Kiểm tra hợp lệ| DG
     PM -->|Cập nhật trạng thái| S
-    BC -->|Truy vấn| PM
-    BC -->|Truy vấn| S
 ```
 
 ## 3b) Liên kết Giao diện - Xử lý - Database
 
 ```mermaid
 flowchart TB
-    subgraph "Giao diện (React SPA)"
-        Login[Đăng nhập]
-        Dashboard[Tổng quan & Báo cáo]
+    subgraph "Giao diện"
         Borrow[Mượn sách]
         Return[Trả sách]
         Extend[Gia hạn]
-        Books[Quản lý sách]
-        Readers[Quản lý độc giả]
-        Accounts[Quản lý tài khoản - Admin]
     end
-    subgraph "Xử lý (Express Controllers)"
-        XLAuth[TaiKhoanController]
-        XLMuon[PhieuMuonController]
-        XLSach[SachController]
-        XLDG[DocGiaController]
-        XLTraCuu[TraCuuHeThongController]
-        XLBC[BaoCaoController]
+    subgraph "Xử lý"
+        XLMuon[Xử lý Mượn/Trả/Gia hạn]
+        XLSach[Xử lý Sách]
+        XLDG[Xử lý Độc giả]
     end
-    subgraph "CSDL (SQLite)"
+    subgraph "CSDL"
         TBDocGia[(Doc_Gia)]
         TBSach[(Sach)]
         TBPhieuMuon[(Phieu_Muon)]
-        TBTaiKhoan[(Tai_Khoan)]
     end
-    Login --> XLAuth --> TBTaiKhoan
-    Accounts --> XLAuth
     Borrow --> XLMuon
+    Borrow --> XLDG
+    Borrow --> XLSach
     Return --> XLMuon
     Extend --> XLMuon
     XLMuon --> TBPhieuMuon
     XLMuon --> TBSach
-    Books --> XLSach --> TBSach
-    Books --> XLTraCuu --> TBSach
-    Readers --> XLDG --> TBDocGia
-    Dashboard --> XLBC --> TBPhieuMuon
-    XLBC --> TBSach
+    XLSach --> TBSach
+    XLDG --> TBDocGia
 ```
 
 **Lược đồ quan hệ dữ liệu:**
@@ -548,16 +421,12 @@ erDiagram
         string email UK
         string soDienThoai
         date ngayHetHan
-        datetime createdAt
-        datetime updatedAt
     }
     SACH {
         string maSach PK
         string tieuDe
         string tacGia
         enum tinhTrang "SAN_SANG|DA_MUON|BAO_TRI|MAT"
-        datetime createdAt
-        datetime updatedAt
     }
     PHIEU_MUON {
         string maPhieu PK
@@ -568,28 +437,10 @@ erDiagram
         date ngayTraThucTe
         enum trangThai "DANG_MUON|DA_TRA"
         number tienPhat
-        datetime createdAt
-        datetime updatedAt
-    }
-    TAI_KHOAN {
-        string maTaiKhoan PK
-        string tenDangNhap UK
-        string matKhau "bcrypt hash"
-        enum vaiTro "THU_THU|QUAN_TRI_VIEN"
-        enum trangThai "HOAT_DONG|BI_KHOA"
-        datetime createdAt
-        datetime updatedAt
     }
 ```
 
 ## 3c) Quy trình vận hành trên giao diện
-
-**Layout:** Sidebar trái (3 nhóm: Menu chính, Quản lý, Báo cáo) + Header (tiêu đề trang) + Vùng nội dung
-
-**Sidebar Menu:**
-- MENU CHÍNH: Mượn sách, Trả sách, Gia hạn
-- QUẢN LÝ: Sách, Độc giả, Tài khoản (chỉ Admin)
-- BÁO CÁO & THỐNG KÊ: Tổng quan
 
 **Mượn sách** — Wizard 3 bước:
 - Bước 1: Tìm độc giả (đa trường, không dấu) → bảng kết quả → Chọn
@@ -603,56 +454,3 @@ erDiagram
 **Gia hạn** — 2 bước:
 - Bước 1: Tìm phiếu (dropdown loại tìm + từ khóa) → bảng phiếu → Chọn
 - Bước 2: Gia hạn +7 ngày → Hạn trả mới
-
-**Quản lý sách:** Tìm kiếm + bảng CRUD + modal edit (tinhTrang dropdown) + không xóa được sách đang mượn
-**Quản lý độc giả:** Tìm kiếm (không dấu) + bảng CRUD + modal + DatePicker ngayHetHan + không xóa được độc giả đang mượn
-**Quản lý tài khoản (Admin):** Bảng danh sách + Tạo mới (modal) + Khóa/Mở khóa + Đổi mật khẩu (modal) + Xóa
-**Đăng nhập:** Form tên đăng nhập + mật khẩu, phân quyền Thủ thư / Quản trị viên
-**Tổng quan:** Cards thống kê + Tabs (phiếu mượn gần đây, quá hạn, tình trạng kho)
-
-## 3d) API Endpoints
-
-| Method | Path | Mô tả | Phân quyền |
-|--------|------|-------|-----------|
-| POST | /auth/login | Đăng nhập | Public |
-| POST | /auth/logout | Đăng xuất | Public |
-| GET | /auth/accounts | Danh sách tài khoản | Admin |
-| POST | /auth/accounts | Tạo tài khoản | Admin |
-| PUT | /auth/accounts/:id/status | Khóa/Mở khóa | Admin |
-| PUT | /auth/accounts/:id/password | Đổi mật khẩu | Admin |
-| DELETE | /auth/accounts/:id | Xóa tài khoản | Admin |
-| GET | /readers | Danh sách độc giả | All |
-| GET | /readers/search | Tìm kiếm độc giả (không dấu) | All |
-| POST | /readers | Tạo độc giả | All |
-| PUT | /readers/:id | Cập nhật độc giả | All |
-| DELETE | /readers/:id | Xóa độc giả | All |
-| GET | /books | Danh sách sách | All |
-| GET | /books/search | Tìm kiếm sách (không dấu) | All |
-| POST | /books | Tạo sách | All |
-| PUT | /books/:id | Cập nhật sách | All |
-| DELETE | /books/:id | Xóa sách | All |
-| GET | /loans | Danh sách phiếu mượn | All |
-| POST | /loans | Tạo phiếu mượn | All |
-| POST | /loans/:id/return | Trả sách | All |
-| POST | /loans/:id/extend | Gia hạn | All |
-| GET | /reports/overdue | Báo cáo quá hạn | All |
-| GET | /reports/inventory | Thống kê tình trạng kho | All |
-
-## 3e) Xác thực và Phân quyền
-
-```mermaid
-flowchart LR
-    A[Client] -->|POST /auth/login| B[Server]
-    B -->|bcrypt verify| C{Hợp lệ?}
-    C -->|Không| D[401 Error]
-    C -->|Có| E[Return user info]
-    E -->|Store localStorage| F[Frontend]
-    F -->|Authorization: Bearer maTaiKhoan| G[API Requests]
-    G -->|Admin routes| H{kiemTraQuyen}
-    H -->|QUAN_TRI_VIEN| I[200 OK]
-    H -->|Khác| J[403 Forbidden]
-```
-
-- Frontend lưu `{maTaiKhoan, tenDangNhap, vaiTro}` trong localStorage
-- Axios interceptor tự gắn `Authorization: Bearer {maTaiKhoan}` vào mọi request
-- Backend check quyền admin trực tiếp trong route handler (không middleware riêng)
