@@ -12,6 +12,7 @@ import ExtendPage from './pages/ExtendPage';
 import ReadersPage from './pages/ReadersPage';
 import BooksPage from './pages/BooksPage';
 import AccountsPage from './pages/AccountsPage';
+import { VaiTro } from './constants';
 
 export default function App() {
   return (
@@ -57,7 +58,11 @@ export default function App() {
                 <Route path="/extend" element={<ExtendPage />} />
                 <Route path="/readers" element={<ReadersPage />} />
                 <Route path="/books" element={<BooksPage />} />
-                <Route path="/accounts" element={<AccountsPage />} />
+
+                {/* Admin-only routes */}
+                <Route element={<ProtectedRoute requiredRole={VaiTro.QUAN_TRI_VIEN} />}>
+                  <Route path="/accounts" element={<AccountsPage />} />
+                </Route>
               </Route>
             </Route>
 
