@@ -1,11 +1,35 @@
 import Database from 'better-sqlite3';
 import { DocGia, CreateDocGiaInput, UpdateDocGiaInput, DeleteResult } from '../types';
+import { removeDiacritics } from '../utils/diacritics';
 
 export class DocGiaController {
   private db: Database.Database;
 
   constructor(db: Database.Database) {
     this.db = db;
+  }
+
+  listReaders(): DocGia[] {
+    const rows = this.db.prepare('SELECT * FROM DocGia ORDER BY createdAt DESC').all() as Record<string, unknown>[];
+    return rows.map(r => this.mapRowToDocGia(r));
+  }
+
+  getReaderById(maDocGia: string): DocGia | null {
+    const row = this.db.prepare('SELECT * FROM DocGia WHERE maDocGia = ?').get(maDocGia) as Record<string, unknown> | undefined;
+    return row ? this.mapRowToDocGia(row) : null;
+  }
+
+  searchReaders(keyword: string): DocGia[] {
+    const all = this.listReaders();
+    if (!keyword || keyword.trim() === '') return all;
+    const kw = keyword.toLowerCase();
+    const kwNorm = removeDiacritics(kw);
+    return all.filter(r => {
+      const fields = [r.maDocGia, r.hoTen, r.email, r.soDienThoai].map(v => String(v || ''));
+      return fields.some(f =>
+        f.toLowerCase().includes(kw) || removeDiacritics(f).toLowerCase().includes(kwNorm)
+      );
+    });
   }
 
   createMember(data: CreateDocGiaInput): DocGia {

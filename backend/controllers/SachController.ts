@@ -1,11 +1,33 @@
 import Database from 'better-sqlite3';
 import { Sach, CreateSachInput, UpdateSachInput, DeleteResult, TinhTrangSach } from '../types';
+import { removeDiacritics } from '../utils/diacritics';
 
 export class SachController {
   private db: Database.Database;
 
   constructor(db: Database.Database) {
     this.db = db;
+  }
+
+  listBooks(): Sach[] {
+    const rows = this.db.prepare('SELECT * FROM Sach ORDER BY createdAt DESC').all() as Record<string, unknown>[];
+    return rows.map(r => this.mapRowToSach(r));
+  }
+
+  searchBooks(keyword: string, tinhTrang?: string): Sach[] {
+    const all = this.listBooks();
+    const kw = keyword.toLowerCase();
+    const kwNorm = removeDiacritics(kw);
+    let filtered = all.filter(b => {
+      const fields = [b.maSach, b.tieuDe, b.tacGia].map(v => String(v || ''));
+      return fields.some(f =>
+        f.toLowerCase().includes(kw) || removeDiacritics(f).toLowerCase().includes(kwNorm)
+      );
+    });
+    if (tinhTrang) {
+      filtered = filtered.filter(b => b.tinhTrang === tinhTrang);
+    }
+    return filtered;
   }
 
   createBook(data: CreateSachInput): Sach {
