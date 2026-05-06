@@ -10,6 +10,7 @@ tsconfig.tsbuildinfo
 backend/Database/*.db
 backend/Database/*.db-shm
 backend/Database/*.db-wal
+backend/backups/
 
 # Env
 .env

@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 import { authApi } from '../services/api';
-import { VaiTro, type VaiTroType } from '../constants';
+import { type VaiTroType } from '../constants';
 
 export interface UserInfo {
   maTaiKhoan: string;

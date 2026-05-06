@@ -588,7 +588,7 @@ erDiagram
 
 **Sidebar Menu:**
 - MENU CHÍNH: Mượn sách, Trả sách, Gia hạn
-- QUẢN LÝ: Sách, Độc giả, Tài khoản (chỉ Admin)
+- QUẢN LÝ: Sách, Độc giả, Tài khoản (Admin), Sao lưu (Admin)
 - BÁO CÁO & THỐNG KÊ: Tổng quan
 
 **Mượn sách** — Wizard 3 bước:
@@ -607,6 +607,7 @@ erDiagram
 **Quản lý sách:** Tìm kiếm + bảng CRUD + modal edit (tinhTrang dropdown) + không xóa được sách đang mượn
 **Quản lý độc giả:** Tìm kiếm (không dấu) + bảng CRUD + modal + DatePicker ngayHetHan + không xóa được độc giả đang mượn
 **Quản lý tài khoản (Admin):** Bảng danh sách + Tạo mới (modal) + Khóa/Mở khóa + Đổi mật khẩu (modal) + Xóa
+**Sao lưu dữ liệu (Admin):** Bảng danh sách file backup + Tạo backup ngay + Download file (auto-backup mỗi 24h trên production, giữ 7 bản gần nhất)
 **Đăng nhập:** Form tên đăng nhập + mật khẩu, phân quyền Thủ thư / Quản trị viên
 **Tổng quan:** Cards thống kê + Tabs (phiếu mượn gần đây, quá hạn, tình trạng kho)
 
@@ -637,6 +638,9 @@ erDiagram
 | POST | /loans/:id/extend | Gia hạn | All |
 | GET | /reports/overdue | Báo cáo quá hạn | All |
 | GET | /reports/inventory | Thống kê tình trạng kho | All |
+| GET | /backups | Danh sách file sao lưu | Admin |
+| POST | /backups/create | Tạo sao lưu ngay | Admin |
+| GET | /backups/download/:name | Tải xuống file sao lưu | Admin |
 
 ## 3e) Xác thực và Phân quyền
 

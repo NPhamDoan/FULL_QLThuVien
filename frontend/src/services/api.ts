@@ -44,6 +44,26 @@ export const accountApi = {
     api.delete(`/auth/accounts/${id}`),
 };
 
+// Backup APIs (admin only)
+export const backupApi = {
+  list: () => api.get('/backups'),
+  create: () => api.post('/backups/create'),
+  download: async (name: string) => {
+    const { data } = await api.get(`/backups/download/${encodeURIComponent(name)}`, {
+      responseType: 'blob',
+    });
+    // Trigger browser download
+    const url = URL.createObjectURL(data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  },
+};
+
 // Book APIs
 export const bookApi = {
   list: () =>

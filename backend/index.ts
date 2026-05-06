@@ -3,6 +3,7 @@ import express from 'express';
 import path from 'path';
 import { initializeDatabase } from './database';
 import { seedDatabase } from './seed';
+import { startBackupScheduler } from './backup';
 import { TaiKhoanController } from './controllers/TaiKhoanController';
 import { DocGiaController } from './controllers/DocGiaController';
 import { SachController } from './controllers/SachController';
@@ -14,6 +15,7 @@ import { createReaderRoutes } from './routes/readerRoutes';
 import { createBookRoutes } from './routes/bookRoutes';
 import { createLoanRoutes } from './routes/loanRoutes';
 import { createReportRoutes } from './routes/reportRoutes';
+import { createBackupRoutes } from './routes/backupRoutes';
 import { requestLogger, errorLogger } from './middleware/logger';
 
 const app = express();
@@ -27,6 +29,9 @@ if (row.count === 0) {
   console.log('Database is empty, seeding data...');
   seedDatabase(db);
 }
+
+// Auto-backup scheduler (production only)
+startBackupScheduler(db);
 const taiKhoanController = new TaiKhoanController(db);
 const docGiaController = new DocGiaController(db);
 const sachController = new SachController(db);
@@ -40,6 +45,7 @@ app.use('/readers', createReaderRoutes(docGiaController));
 app.use('/books', createBookRoutes(sachController, searchController));
 app.use('/loans', createLoanRoutes(phieuMuonController));
 app.use('/reports', createReportRoutes(baoCaoController));
+app.use('/backups', createBackupRoutes(taiKhoanController, db));
 
 // Error logging (after API routes)
 app.use(errorLogger);

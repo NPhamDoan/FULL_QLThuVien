@@ -27,7 +27,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction): 
   // Skip static file requests
   if (!req.path.startsWith('/auth') && !req.path.startsWith('/readers') &&
       !req.path.startsWith('/books') && !req.path.startsWith('/loans') &&
-      !req.path.startsWith('/reports')) {
+      !req.path.startsWith('/reports') && !req.path.startsWith('/backups')) {
     next();
     return;
   }

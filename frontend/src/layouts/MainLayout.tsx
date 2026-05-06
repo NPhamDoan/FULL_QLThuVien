@@ -4,7 +4,7 @@ import { Layout, Avatar, Dropdown, Typography } from 'antd';
 import {
   BookOutlined, ImportOutlined, ExportOutlined, HistoryOutlined,
   TeamOutlined, BarChartOutlined, LogoutOutlined, UserOutlined,
-  SettingOutlined, ReadOutlined, KeyOutlined,
+  SettingOutlined, ReadOutlined, KeyOutlined, DatabaseOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import { VaiTro } from '../constants';
@@ -26,7 +26,10 @@ const getMenuSections = (vaiTro?: string) => {
       items: [
         { key: '/books', icon: <BookOutlined />, label: 'Sách' },
         { key: '/readers', icon: <TeamOutlined />, label: 'Độc giả' },
-        ...(vaiTro === VaiTro.QUAN_TRI_VIEN ? [{ key: '/accounts', icon: <KeyOutlined />, label: 'Tài khoản' }] : []),
+        ...(vaiTro === VaiTro.QUAN_TRI_VIEN ? [
+          { key: '/accounts', icon: <KeyOutlined />, label: 'Tài khoản' },
+          { key: '/backups', icon: <DatabaseOutlined />, label: 'Sao lưu' },
+        ] : []),
       ],
     },
     {
@@ -43,6 +46,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/': 'Báo cáo & Thống kê', '/borrow': 'Mượn sách', '/return': 'Trả sách',
   '/extend': 'Gia hạn', '/books': 'Quản lý sách',
   '/readers': 'Quản lý độc giả', '/accounts': 'Quản lý tài khoản',
+  '/backups': 'Sao lưu dữ liệu',
 };
 
 export default function MainLayout() {
