@@ -23,9 +23,9 @@ export class PhieuMuonController {
       FROM PhieuMuon pm
       LEFT JOIN DocGia dg ON pm.maDocGia = dg.maDocGia
       LEFT JOIN Sach s ON pm.maSach = s.maSach
-      WHERE pm.trangThai = 'DANG_MUON'
+      WHERE pm.trangThai = ?
       ORDER BY pm.ngayMuon DESC
-    `).all() as Record<string, unknown>[];
+    `).all(TrangThaiPhieu.DANG_MUON) as Record<string, unknown>[];
     return rows.map((r) => ({
       ...this.mapRowToPhieuMuon(r),
       tenDocGia: r.tenDocGia as string | undefined,
@@ -62,10 +62,10 @@ export class PhieuMuonController {
       FROM PhieuMuon pm
       LEFT JOIN DocGia dg ON pm.maDocGia = dg.maDocGia
       LEFT JOIN Sach s ON pm.maSach = s.maSach
-      WHERE pm.trangThai = 'DANG_MUON'
+      WHERE pm.trangThai = ?
         ${whereClause}
       ORDER BY pm.ngayMuon DESC
-    `).all(...params) as Record<string, unknown>[];
+    `).all(TrangThaiPhieu.DANG_MUON, ...params) as Record<string, unknown>[];
     return rows.map((r) => ({
       ...this.mapRowToPhieuMuon(r),
       tenDocGia: r.tenDocGia as string | undefined,
@@ -122,12 +122,12 @@ export class PhieuMuonController {
 
       this.db.prepare(`
         INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai, tienPhat)
-        VALUES (?, ?, ?, ?, ?, 'DANG_MUON', 0)
-      `).run(maPhieu, maDocGia, maSach, ngayMuon, hanTra);
+        VALUES (?, ?, ?, ?, ?, ?, 0)
+      `).run(maPhieu, maDocGia, maSach, ngayMuon, hanTra, TrangThaiPhieu.DANG_MUON);
 
       this.db.prepare(`
-        UPDATE Sach SET tinhTrang = 'DA_MUON', updatedAt = datetime('now') WHERE maSach = ?
-      `).run(maSach);
+        UPDATE Sach SET tinhTrang = ?, updatedAt = datetime('now') WHERE maSach = ?
+      `).run(TinhTrangSach.DA_MUON, maSach);
 
       const row = this.db.prepare('SELECT * FROM PhieuMuon WHERE maPhieu = ?').get(maPhieu) as Record<string, unknown>;
       return this.mapRowToPhieuMuon(row);
@@ -149,8 +149,8 @@ export class PhieuMuonController {
 
   findLoanByBook(maSach: string): PhieuMuon | null {
     const row = this.db.prepare(
-      "SELECT * FROM PhieuMuon WHERE maSach = ? AND trangThai = 'DANG_MUON'"
-    ).get(maSach) as Record<string, unknown> | undefined;
+      'SELECT * FROM PhieuMuon WHERE maSach = ? AND trangThai = ?'
+    ).get(maSach, TrangThaiPhieu.DANG_MUON) as Record<string, unknown> | undefined;
 
     if (!row) return null;
     return this.mapRowToPhieuMuon(row);
@@ -186,13 +186,13 @@ export class PhieuMuonController {
       const ngayTraStr = ngayTraThucTe.toISOString().split('T')[0];
 
       this.db.prepare(`
-        UPDATE PhieuMuon SET trangThai = 'DA_TRA', ngayTraThucTe = ?, tienPhat = ?, updatedAt = datetime('now')
+        UPDATE PhieuMuon SET trangThai = ?, ngayTraThucTe = ?, tienPhat = ?, updatedAt = datetime('now')
         WHERE maPhieu = ?
-      `).run(ngayTraStr, tienPhat, maPhieu);
+      `).run(TrangThaiPhieu.DA_TRA, ngayTraStr, tienPhat, maPhieu);
 
       this.db.prepare(`
-        UPDATE Sach SET tinhTrang = 'SAN_SANG', updatedAt = datetime('now') WHERE maSach = ?
-      `).run(loan.maSach);
+        UPDATE Sach SET tinhTrang = ?, updatedAt = datetime('now') WHERE maSach = ?
+      `).run(TinhTrangSach.SAN_SANG, loan.maSach);
 
       return { success: true, tienPhat, ngayTraThucTe };
     });

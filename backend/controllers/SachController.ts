@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { Sach, CreateSachInput, UpdateSachInput, DeleteResult, TinhTrangSach } from '../types';
+import { Sach, CreateSachInput, UpdateSachInput, DeleteResult, TinhTrangSach, TrangThaiPhieu } from '../types';
 import { removeDiacritics } from '../utils/diacritics';
 
 export class SachController {
@@ -87,7 +87,7 @@ export class SachController {
     }
 
     // Delete returned loans first to satisfy FK constraint
-    this.db.prepare("DELETE FROM PhieuMuon WHERE maSach = ? AND trangThai = 'DA_TRA'").run(maSach);
+    this.db.prepare('DELETE FROM PhieuMuon WHERE maSach = ? AND trangThai = ?').run(maSach, TrangThaiPhieu.DA_TRA);
     this.db.prepare('DELETE FROM Sach WHERE maSach = ?').run(maSach);
     return { success: true };
   }

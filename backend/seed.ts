@@ -1,7 +1,7 @@
 import { initializeDatabase } from './database';
 import bcrypt from 'bcrypt';
 import Database from 'better-sqlite3';
-import { VaiTro, TrangThaiTaiKhoan, TinhTrangSach } from './types';
+import { VaiTro, TrangThaiTaiKhoan, TinhTrangSach, TrangThaiPhieu } from './types';
 
 export function seedDatabase(db: Database.Database) {
   // Clear existing data (order matters for FK)
@@ -102,7 +102,7 @@ export function seedDatabase(db: Database.Database) {
   db.prepare(`
     INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run('PM001', 'DG001', 'S004', fmt(pastDue1), fmt(pastDue1Han), 'DANG_MUON');
+  `).run('PM001', 'DG001', 'S004', fmt(pastDue1), fmt(pastDue1Han), TrangThaiPhieu.DANG_MUON);
 
   // Phiếu đang mượn - quá hạn (S010)
   const pastDue2 = new Date(today);
@@ -112,7 +112,7 @@ export function seedDatabase(db: Database.Database) {
   db.prepare(`
     INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run('PM002', 'DG002', 'S010', fmt(pastDue2), fmt(pastDue2Han), 'DANG_MUON');
+  `).run('PM002', 'DG002', 'S010', fmt(pastDue2), fmt(pastDue2Han), TrangThaiPhieu.DANG_MUON);
 
   // Phiếu đang mượn - chưa quá hạn (S015)
   const recent = new Date(today);
@@ -122,19 +122,19 @@ export function seedDatabase(db: Database.Database) {
   db.prepare(`
     INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai)
     VALUES (?, ?, ?, ?, ?, ?)
-  `).run('PM005', 'DG006', 'S015', fmt(recent), fmt(recentHan), 'DANG_MUON');
+  `).run('PM005', 'DG006', 'S015', fmt(recent), fmt(recentHan), TrangThaiPhieu.DANG_MUON);
 
   // Phiếu đã trả
   db.prepare(`
     INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai, ngayTraThucTe, tienPhat)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run('PM003', 'DG003', 'S001', '2025-02-01', '2025-02-15', 'DA_TRA', '2025-02-14', 0);
+  `).run('PM003', 'DG003', 'S001', '2025-02-01', '2025-02-15', TrangThaiPhieu.DA_TRA, '2025-02-14', 0);
 
   // Phiếu đã trả - có phạt
   db.prepare(`
     INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai, ngayTraThucTe, tienPhat)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run('PM004', 'DG005', 'S002', '2025-01-10', '2025-01-24', 'DA_TRA', '2025-01-27', 15000);
+  `).run('PM004', 'DG005', 'S002', '2025-01-10', '2025-01-24', TrangThaiPhieu.DA_TRA, '2025-01-27', 15000);
 
   console.log('Seed data created successfully!');
   console.log('');

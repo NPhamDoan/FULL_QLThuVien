@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { DocGia, CreateDocGiaInput, UpdateDocGiaInput, DeleteResult } from '../types';
+import { DocGia, CreateDocGiaInput, UpdateDocGiaInput, DeleteResult, TrangThaiPhieu } from '../types';
 import { removeDiacritics } from '../utils/diacritics';
 
 export class DocGiaController {
@@ -99,15 +99,15 @@ export class DocGiaController {
     }
 
     // Delete returned loans first to satisfy FK constraint
-    this.db.prepare("DELETE FROM PhieuMuon WHERE maDocGia = ? AND trangThai = 'DA_TRA'").run(maDocGia);
+    this.db.prepare('DELETE FROM PhieuMuon WHERE maDocGia = ? AND trangThai = ?').run(maDocGia, TrangThaiPhieu.DA_TRA);
     this.db.prepare('DELETE FROM DocGia WHERE maDocGia = ?').run(maDocGia);
     return { success: true };
   }
 
   hasActiveLoans(maDocGia: string): boolean {
     const row = this.db.prepare(
-      "SELECT COUNT(*) as count FROM PhieuMuon WHERE maDocGia = ? AND trangThai = 'DANG_MUON'"
-    ).get(maDocGia) as { count: number };
+      'SELECT COUNT(*) as count FROM PhieuMuon WHERE maDocGia = ? AND trangThai = ?'
+    ).get(maDocGia, TrangThaiPhieu.DANG_MUON) as { count: number };
 
     return row.count > 0;
   }

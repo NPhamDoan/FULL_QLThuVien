@@ -10,8 +10,8 @@ export class BaoCaoController {
 
   getOverdueLoans(): PhieuMuon[] {
     const rows = this.db.prepare(
-      "SELECT * FROM PhieuMuon WHERE trangThai = 'DANG_MUON' AND hanTra < date('now')"
-    ).all() as Record<string, unknown>[];
+      "SELECT * FROM PhieuMuon WHERE trangThai = ? AND hanTra < date('now')"
+    ).all(TrangThaiPhieu.DANG_MUON) as Record<string, unknown>[];
 
     return rows.map((row) => this.mapRowToPhieuMuon(row));
   }
