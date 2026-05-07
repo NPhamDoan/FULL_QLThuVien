@@ -66,7 +66,11 @@ export function createLoanRoutes(controller: PhieuMuonController): Router {
   // POST /loans/:id/return - Trả sách
   router.post('/:id/return', (req: Request, res: Response) => {
     try {
-      const result = controller.returnBook(req.params.id as string);
+      const { daMatSach, phiMat } = req.body || {};
+      const result = controller.returnBook(req.params.id as string, {
+        daMatSach: !!daMatSach,
+        phiMat: typeof phiMat === 'number' ? phiMat : 0,
+      });
       if (result.success) {
         res.json(result);
       } else {

@@ -1,5 +1,12 @@
 import Database from 'better-sqlite3';
-import { Sach, CreateSachInput, UpdateSachInput, DeleteResult, TinhTrangSach, TrangThaiPhieu } from '../types';
+import {
+  Sach,
+  SachWithAvailability,
+  CreateSachInput,
+  UpdateSachInput,
+  DeleteResult,
+  TrangThaiPhieu,
+} from '../types';
 import { removeDiacritics } from '../utils/diacritics';
 
 export class SachController {
@@ -9,12 +16,17 @@ export class SachController {
     this.db = db;
   }
 
-  listBooks(): Sach[] {
+  listBooks(): SachWithAvailability[] {
     const rows = this.db.prepare('SELECT * FROM Sach ORDER BY createdAt DESC').all() as Record<string, unknown>[];
-    return rows.map(r => this.mapRowToSach(r));
+    return rows.map(r => this.mapRowToSachWithAvailability(r));
   }
 
-  searchBooks(keyword: string, tinhTrang?: string): Sach[] {
+  getBookById(maSach: string): SachWithAvailability | null {
+    const row = this.db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach) as Record<string, unknown> | undefined;
+    return row ? this.mapRowToSachWithAvailability(row) : null;
+  }
+
+  searchBooks(keyword: string, onlyAvailable?: boolean): SachWithAvailability[] {
     const all = this.listBooks();
     const kw = keyword.toLowerCase();
     const kwNorm = removeDiacritics(kw);
@@ -24,8 +36,8 @@ export class SachController {
         f.toLowerCase().includes(kw) || removeDiacritics(f).toLowerCase().includes(kwNorm)
       );
     });
-    if (tinhTrang) {
-      filtered = filtered.filter(b => b.tinhTrang === tinhTrang);
+    if (onlyAvailable) {
+      filtered = filtered.filter(b => b.soKhaDung > 0);
     }
     return filtered;
   }
@@ -37,22 +49,28 @@ export class SachController {
     if (!data.tacGia || data.tacGia.trim() === '') {
       throw new Error('tacGia là trường bắt buộc');
     }
+    const soBanSao = data.soBanSao ?? 1;
+    if (soBanSao < 1) {
+      throw new Error('soBanSao phải >= 1');
+    }
 
     const last = this.db.prepare("SELECT maSach FROM Sach WHERE maSach LIKE 'S%' ORDER BY CAST(SUBSTR(maSach, 2) AS INTEGER) DESC LIMIT 1").get() as { maSach: string } | undefined;
     const nextNum = last ? parseInt(last.maSach.substring(1)) + 1 : 1;
     const maSach = 'S' + String(nextNum).padStart(3, '0');
 
     this.db.prepare(`
-      INSERT INTO Sach (maSach, tieuDe, tacGia)
-      VALUES (?, ?, ?)
-    `).run(maSach, data.tieuDe, data.tacGia);
+      INSERT INTO Sach (maSach, tieuDe, tacGia, soBanSao)
+      VALUES (?, ?, ?, ?)
+    `).run(maSach, data.tieuDe, data.tacGia, soBanSao);
 
     const row = this.db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach) as Record<string, unknown>;
-
     return this.mapRowToSach(row);
   }
 
   updateBook(maSach: string, data: UpdateSachInput): Sach {
+    const current = this.db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach) as Record<string, unknown> | undefined;
+    if (!current) throw new Error('Sách không tồn tại');
+
     const setClauses: string[] = [];
     const values: unknown[] = [];
 
@@ -64,25 +82,37 @@ export class SachController {
       setClauses.push('tacGia = ?');
       values.push(data.tacGia);
     }
-    if (data.tinhTrang !== undefined) {
-      setClauses.push('tinhTrang = ?');
-      values.push(data.tinhTrang);
+
+    // Compute new counter values (for validation)
+    const newSoBanSao = data.soBanSao ?? (current.soBanSao as number);
+    const newSoMat = data.soMat ?? (current.soMat as number);
+    const newSoBaoTri = data.soBaoTri ?? (current.soBaoTri as number);
+    const soDangMuon = this.getActiveLoanCount(maSach);
+
+    if (newSoBanSao < newSoMat + newSoBaoTri + soDangMuon) {
+      throw new Error(
+        `soBanSao (${newSoBanSao}) không được nhỏ hơn tổng (mất ${newSoMat} + bảo trì ${newSoBaoTri} + đang mượn ${soDangMuon} = ${newSoMat + newSoBaoTri + soDangMuon})`
+      );
     }
+    if (newSoBanSao < 0 || newSoMat < 0 || newSoBaoTri < 0) {
+      throw new Error('Số lượng không được âm');
+    }
+
+    if (data.soBanSao !== undefined) { setClauses.push('soBanSao = ?'); values.push(data.soBanSao); }
+    if (data.soMat !== undefined) { setClauses.push('soMat = ?'); values.push(data.soMat); }
+    if (data.soBaoTri !== undefined) { setClauses.push('soBaoTri = ?'); values.push(data.soBaoTri); }
 
     setClauses.push("updatedAt = datetime('now')");
     values.push(maSach);
 
-    this.db.prepare(`
-      UPDATE Sach SET ${setClauses.join(', ')} WHERE maSach = ?
-    `).run(...values);
+    this.db.prepare(`UPDATE Sach SET ${setClauses.join(', ')} WHERE maSach = ?`).run(...values);
 
     const row = this.db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach) as Record<string, unknown>;
-
     return this.mapRowToSach(row);
   }
 
   deleteBook(maSach: string): DeleteResult {
-    if (this.isBookOnLoan(maSach)) {
+    if (this.getActiveLoanCount(maSach) > 0) {
       return { success: false, message: 'Không thể xóa sách đang được mượn' };
     }
 
@@ -92,16 +122,25 @@ export class SachController {
     return { success: true };
   }
 
-  isBookOnLoan(maSach: string): boolean {
+  /** Đếm số bản đang được mượn (PhieuMuon.trangThai = DANG_MUON) */
+  getActiveLoanCount(maSach: string): number {
     const row = this.db.prepare(
-      'SELECT tinhTrang FROM Sach WHERE maSach = ?'
-    ).get(maSach) as { tinhTrang: string } | undefined;
+      'SELECT COUNT(*) as count FROM PhieuMuon WHERE maSach = ? AND trangThai = ?'
+    ).get(maSach, TrangThaiPhieu.DANG_MUON) as { count: number };
+    return row.count;
+  }
 
-    if (!row) {
-      return false;
-    }
+  /** Số bản có thể mượn = soBanSao - soMat - soBaoTri - soDangMuon */
+  getAvailableCount(maSach: string): number {
+    const book = this.db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach) as Record<string, unknown> | undefined;
+    if (!book) return 0;
+    const soDangMuon = this.getActiveLoanCount(maSach);
+    return (book.soBanSao as number) - (book.soMat as number) - (book.soBaoTri as number) - soDangMuon;
+  }
 
-    return row.tinhTrang === TinhTrangSach.DA_MUON;
+  /** Tăng số bản mất (khi trả sách đánh dấu mất) */
+  incrementLost(maSach: string): void {
+    this.db.prepare(`UPDATE Sach SET soMat = soMat + 1, updatedAt = datetime('now') WHERE maSach = ?`).run(maSach);
   }
 
   private mapRowToSach(row: Record<string, unknown>): Sach {
@@ -109,9 +148,18 @@ export class SachController {
       maSach: row.maSach as string,
       tieuDe: row.tieuDe as string,
       tacGia: row.tacGia as string,
-      tinhTrang: row.tinhTrang as TinhTrangSach,
+      soBanSao: row.soBanSao as number,
+      soMat: row.soMat as number,
+      soBaoTri: row.soBaoTri as number,
       createdAt: new Date(row.createdAt as string),
       updatedAt: new Date(row.updatedAt as string),
     };
+  }
+
+  private mapRowToSachWithAvailability(row: Record<string, unknown>): SachWithAvailability {
+    const base = this.mapRowToSach(row);
+    const soDangMuon = this.getActiveLoanCount(base.maSach);
+    const soKhaDung = base.soBanSao - base.soMat - base.soBaoTri - soDangMuon;
+    return { ...base, soDangMuon, soKhaDung };
   }
 }

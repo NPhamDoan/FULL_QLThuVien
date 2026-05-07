@@ -1,23 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Table, Button, Modal, Form, Input, Alert, Popconfirm, Space, Tag, Select, Row, Col } from 'antd';
+import { Table, Button, Modal, Form, Input, InputNumber, Alert, Popconfirm, Space, Tag, Select, Row, Col, Tooltip } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { bookApi } from '../services/api';
-import { TinhTrangSach } from '../constants';
 import axios from 'axios';
 
 interface BookRecord {
   maSach: string;
   tieuDe: string;
   tacGia: string;
-  tinhTrang: string;
+  soBanSao: number;
+  soMat: number;
+  soBaoTri: number;
+  soDangMuon: number;
+  soKhaDung: number;
 }
-
-const tinhTrangConfig: Record<string, { label: string; color: string }> = {
-  SAN_SANG: { label: 'Sẵn sàng', color: 'green' },
-  DA_MUON: { label: 'Đã mượn', color: 'orange' },
-  BAO_TRI: { label: 'Bảo trì', color: 'blue' },
-  MAT: { label: 'Mất', color: 'red' },
-};
 
 type SearchType = 'tieuDe' | 'tacGia' | 'maSach';
 
@@ -90,13 +86,20 @@ export default function BooksPage() {
     setEditingBook(null);
     setModalError(null);
     form.resetFields();
+    form.setFieldsValue({ soBanSao: 1 });
     setModalOpen(true);
   };
 
   const openEditModal = (book: BookRecord) => {
     setEditingBook(book);
     setModalError(null);
-    form.setFieldsValue({ tieuDe: book.tieuDe, tacGia: book.tacGia, tinhTrang: book.tinhTrang });
+    form.setFieldsValue({
+      tieuDe: book.tieuDe,
+      tacGia: book.tacGia,
+      soBanSao: book.soBanSao,
+      soMat: book.soMat,
+      soBaoTri: book.soBaoTri,
+    });
     setModalOpen(true);
   };
 
@@ -106,9 +109,19 @@ export default function BooksPage() {
       setModalLoading(true);
       setModalError(null);
       if (editingBook) {
-        await bookApi.update(editingBook.maSach, { tieuDe: values.tieuDe, tacGia: values.tacGia, tinhTrang: values.tinhTrang });
+        await bookApi.update(editingBook.maSach, {
+          tieuDe: values.tieuDe,
+          tacGia: values.tacGia,
+          soBanSao: values.soBanSao,
+          soMat: values.soMat,
+          soBaoTri: values.soBaoTri,
+        });
       } else {
-        await bookApi.create({ tieuDe: values.tieuDe, tacGia: values.tacGia });
+        await bookApi.create({
+          tieuDe: values.tieuDe,
+          tacGia: values.tacGia,
+          soBanSao: values.soBanSao ?? 1,
+        });
       }
       setModalOpen(false);
       form.resetFields();
@@ -140,15 +153,31 @@ export default function BooksPage() {
   };
 
   const columns = [
-    { title: 'Mã sách', dataIndex: 'maSach', key: 'maSach', width: 110 },
+    { title: 'Mã sách', dataIndex: 'maSach', key: 'maSach', width: 100 },
     { title: 'Tiêu đề', dataIndex: 'tieuDe', key: 'tieuDe' },
-    { title: 'Tác giả', dataIndex: 'tacGia', key: 'tacGia' },
+    { title: 'Tác giả', dataIndex: 'tacGia', key: 'tacGia', width: 180 },
     {
-      title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 120,
-      render: (val: string) => {
-        const cfg = tinhTrangConfig[val];
-        return cfg ? <Tag color={cfg.color}>{cfg.label}</Tag> : <Tag>{val}</Tag>;
+      title: 'Khả dụng', key: 'soKhaDung', width: 110,
+      render: (_: unknown, r: BookRecord) => {
+        const color = r.soKhaDung > 0 ? 'green' : 'red';
+        return (
+          <Tooltip title={`${r.soBanSao} bản - ${r.soDangMuon} mượn - ${r.soBaoTri} bảo trì - ${r.soMat} mất`}>
+            <Tag color={color}>{r.soKhaDung} / {r.soBanSao}</Tag>
+          </Tooltip>
+        );
       },
+    },
+    {
+      title: 'Đang mượn', dataIndex: 'soDangMuon', key: 'soDangMuon', width: 90,
+      render: (v: number) => v > 0 ? <Tag color="orange">{v}</Tag> : <span style={{ color: '#94A3B8' }}>0</span>,
+    },
+    {
+      title: 'Bảo trì', dataIndex: 'soBaoTri', key: 'soBaoTri', width: 80,
+      render: (v: number) => v > 0 ? <Tag color="blue">{v}</Tag> : <span style={{ color: '#94A3B8' }}>0</span>,
+    },
+    {
+      title: 'Mất', dataIndex: 'soMat', key: 'soMat', width: 70,
+      render: (v: number) => v > 0 ? <Tag color="red">{v}</Tag> : <span style={{ color: '#94A3B8' }}>0</span>,
     },
     {
       title: 'Thao tác', key: 'actions', width: 160,
@@ -234,17 +263,46 @@ export default function BooksPage() {
           <Form.Item name="tacGia" label="Tác giả" rules={[{ required: true, message: 'Vui lòng nhập tên tác giả' }]}>
             <Input placeholder="Nhập tên tác giả" />
           </Form.Item>
+          <Row gutter={12}>
+            <Col span={editingBook ? 8 : 24}>
+              <Form.Item
+                name="soBanSao"
+                label="Tổng số bản"
+                rules={[{ required: true, message: 'Bắt buộc' }]}
+                tooltip="Tổng số bản của đầu sách này mà thư viện sở hữu"
+              >
+                <InputNumber min={1} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            {editingBook && (
+              <>
+                <Col span={8}>
+                  <Form.Item
+                    name="soBaoTri"
+                    label="Đang bảo trì"
+                    tooltip="Số bản đang sửa chữa, không cho mượn"
+                  >
+                    <InputNumber min={0} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item
+                    name="soMat"
+                    label="Đã mất"
+                    tooltip="Số bản bị mất không thể khôi phục"
+                  >
+                    <InputNumber min={0} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+              </>
+            )}
+          </Row>
           {editingBook && (
-            <Form.Item name="tinhTrang" label="Tình trạng">
-              <Select
-                options={[
-                  { value: TinhTrangSach.SAN_SANG, label: 'Sẵn sàng' },
-                  { value: TinhTrangSach.DA_MUON, label: 'Đã mượn', disabled: true },
-                  { value: TinhTrangSach.BAO_TRI, label: 'Bảo trì' },
-                  { value: TinhTrangSach.MAT, label: 'Mất' },
-                ]}
-              />
-            </Form.Item>
+            <Alert
+              type="info"
+              message={`Khả dụng = ${editingBook.soBanSao} - ${editingBook.soMat} mất - ${editingBook.soBaoTri} bảo trì - ${editingBook.soDangMuon} đang mượn = ${editingBook.soKhaDung}`}
+              style={{ marginTop: 8 }}
+            />
           )}
         </Form>
       </Modal>

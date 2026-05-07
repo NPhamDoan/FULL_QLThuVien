@@ -1,12 +1,5 @@
 // ==================== Enums ====================
 
-export enum TinhTrangSach {
-  SAN_SANG = "SAN_SANG",
-  DA_MUON = "DA_MUON",
-  BAO_TRI = "BAO_TRI",
-  MAT = "MAT",
-}
-
 export enum TrangThaiPhieu {
   DANG_MUON = "DANG_MUON",
   DA_TRA = "DA_TRA",
@@ -34,9 +27,17 @@ export interface Sach {
   maSach: string;
   tieuDe: string;
   tacGia: string;
-  tinhTrang: TinhTrangSach;
+  soBanSao: number;       // tổng số bản nhập vào
+  soMat: number;          // số bản đã mất
+  soBaoTri: number;       // số bản đang bảo trì
   createdAt: Date;
   updatedAt: Date;
+}
+
+/** Sach kèm thông tin tính toán runtime */
+export interface SachWithAvailability extends Sach {
+  soDangMuon: number;     // đếm từ PhieuMuon (DANG_MUON)
+  soKhaDung: number;      // soBanSao - soMat - soBaoTri - soDangMuon
 }
 
 export interface DocGia {
@@ -78,7 +79,9 @@ export interface SachDTO {
   maSach: string;
   tieuDe: string;
   tacGia: string;
-  tinhTrang: TinhTrangSach;
+  soBanSao: number;
+  soMat: number;
+  soBaoTri: number;
 }
 
 export interface DocGiaDTO {
@@ -113,12 +116,15 @@ export interface LoginResult {
 export interface CreateSachInput {
   tieuDe: string;
   tacGia: string;
+  soBanSao?: number;
 }
 
 export interface UpdateSachInput {
   tieuDe?: string;
   tacGia?: string;
-  tinhTrang?: TinhTrangSach;
+  soBanSao?: number;
+  soMat?: number;
+  soBaoTri?: number;
 }
 
 export interface CreateDocGiaInput {
@@ -149,7 +155,7 @@ export interface ValidationResult {
 
 export interface BookStatus {
   available: boolean;
-  tinhTrang: TinhTrangSach;
+  soKhaDung: number;
   message?: string;
 }
 
@@ -162,13 +168,15 @@ export interface ReturnResult {
   success: boolean;
   tienPhat: number;
   ngayTraThucTe: Date;
+  daMatSach?: boolean;
   message?: string;
 }
 
 export interface InventoryReport {
-  sanSang: number;
-  daMuon: number;
-  baoTri: number;
-  mat: number;
-  tongCong: number;
+  soDauSach: number;      // số loại sách khác nhau (COUNT rows Sach)
+  soBanSao: number;       // tổng số bản đã nhập (SUM soBanSao)
+  soKhaDung: number;      // có thể mượn ngay
+  soDangMuon: number;     // đang được mượn
+  soBaoTri: number;       // đang bảo trì
+  soMat: number;          // đã mất
 }

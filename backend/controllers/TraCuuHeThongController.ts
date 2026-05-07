@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { Sach, TinhTrangSach } from '../types';
+import { Sach } from '../types';
 import { removeDiacritics } from '../utils/diacritics';
 
 export class TraCuuHeThongController {
@@ -49,7 +49,9 @@ export class TraCuuHeThongController {
       maSach: row.maSach as string,
       tieuDe: row.tieuDe as string,
       tacGia: row.tacGia as string,
-      tinhTrang: row.tinhTrang as TinhTrangSach,
+      soBanSao: row.soBanSao as number,
+      soMat: row.soMat as number,
+      soBaoTri: row.soBaoTri as number,
       createdAt: new Date(row.createdAt as string),
       updatedAt: new Date(row.updatedAt as string),
     };

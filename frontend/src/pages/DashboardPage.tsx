@@ -17,10 +17,11 @@ import axios from 'axios';
 const { Text } = Typography;
 
 interface Stats {
-  totalBooks: number;
+  totalBooks: number;     // số đầu sách (rows)
+  totalCopies: number;    // tổng số bản
   totalReaders: number;
-  issued: number;
-  returned: number;
+  issued: number;         // đang mượn
+  available: number;      // khả dụng
   overdue: number;
   baoTri: number;
   mat: number;
@@ -46,7 +47,7 @@ interface ActiveLoan {
 export default function DashboardPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats>({ totalBooks: 0, totalReaders: 0, issued: 0, returned: 0, overdue: 0, baoTri: 0, mat: 0 });
+  const [stats, setStats] = useState<Stats>({ totalBooks: 0, totalCopies: 0, totalReaders: 0, issued: 0, available: 0, overdue: 0, baoTri: 0, mat: 0 });
   const [overdueLoans, setOverdueLoans] = useState<OverdueLoan[]>([]);
   const [activeLoans, setActiveLoans] = useState<ActiveLoan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,13 +67,14 @@ export default function DashboardPage() {
         const overdueData = Array.isArray(overdueRes.data) ? overdueRes.data : [];
         const activeData = Array.isArray(activeRes.data) ? activeRes.data : [];
         setStats({
-          totalBooks: Array.isArray(booksRes.data) ? booksRes.data.length : 0,
+          totalBooks: inv?.soDauSach ?? 0,
+          totalCopies: inv?.soBanSao ?? 0,
           totalReaders: Array.isArray(readersRes.data) ? readersRes.data.length : 0,
-          issued: activeData.length,
-          returned: inv?.sanSang ?? 0,
+          issued: inv?.soDangMuon ?? activeData.length,
+          available: inv?.soKhaDung ?? 0,
           overdue: overdueData.length,
-          baoTri: inv?.baoTri ?? 0,
-          mat: inv?.mat ?? 0,
+          baoTri: inv?.soBaoTri ?? 0,
+          mat: inv?.soMat ?? 0,
         });
         setOverdueLoans(overdueData);
         setActiveLoans(activeData);
@@ -95,7 +97,7 @@ export default function DashboardPage() {
   }
 
   const summaryCards = [
-    { title: 'Tổng sách', value: stats.totalBooks, icon: <BookOutlined />, color: '#0F766E', bg: 'rgba(212,160,23,0.1)', link: '/books', tab: '' },
+    { title: 'Đầu sách', value: stats.totalBooks, icon: <BookOutlined />, color: '#0F766E', bg: 'rgba(212,160,23,0.1)', link: '/books', tab: '' },
     { title: 'Độc giả', value: stats.totalReaders, icon: <TeamOutlined />, color: '#22C55E', bg: 'rgba(34,197,94,0.1)', link: '/readers', tab: '' },
     { title: 'Đang mượn', value: stats.issued, icon: <ImportOutlined />, color: '#60A5FA', bg: 'rgba(96,165,250,0.1)', link: '', tab: 'active' },
     { title: 'Quá hạn', value: stats.overdue, icon: <WarningOutlined />, color: '#EF4444', bg: 'rgba(239,68,68,0.1)', link: '', tab: 'overdue' },
@@ -112,12 +114,12 @@ export default function DashboardPage() {
   ];
 
   const inventoryData = [
-    { label: 'Sẵn sàng', value: stats.returned, color: '#27ae60' },
+    { label: 'Khả dụng', value: stats.available, color: '#27ae60' },
     { label: 'Đang mượn', value: stats.issued, color: '#e67e22' },
     { label: 'Bảo trì', value: stats.baoTri, color: '#3498db' },
     { label: 'Mất', value: stats.mat, color: '#e74c3c' },
   ];
-  const totalBooks = stats.totalBooks || 1;
+  const totalBooks = stats.totalCopies || 1;
 
   return (
     <div>
@@ -259,7 +261,7 @@ export default function DashboardPage() {
               <Row gutter={[16, 16]} style={{ marginTop: 8 }}>
                 {[
                   { title: 'ĐANG MƯỢN', value: stats.issued, icon: <ImportOutlined style={{ fontSize: 28, color: '#607D8B' }} /> },
-                  { title: 'SẴN SÀNG', value: stats.returned, icon: <ExportOutlined style={{ fontSize: 28, color: '#27ae60' }} /> },
+                  { title: 'KHẢ DỤNG', value: stats.available, icon: <ExportOutlined style={{ fontSize: 28, color: '#27ae60' }} /> },
                   { title: 'QUÁ HẠN', value: stats.overdue, icon: <WarningOutlined style={{ fontSize: 28, color: '#e74c3c' }} /> },
                   { title: 'BẢO TRÌ', value: stats.baoTri, icon: <BookOutlined style={{ fontSize: 28, color: '#3498db' }} /> },
                 ].map((card, i) => (

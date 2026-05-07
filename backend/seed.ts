@@ -1,7 +1,7 @@
 import { initializeDatabase } from './database';
 import bcrypt from 'bcrypt';
 import Database from 'better-sqlite3';
-import { VaiTro, TrangThaiTaiKhoan, TinhTrangSach, TrangThaiPhieu } from './types';
+import { VaiTro, TrangThaiTaiKhoan, TrangThaiPhieu } from './types';
 
 export function seedDatabase(db: Database.Database) {
   // Clear existing data (order matters for FK)
@@ -56,37 +56,39 @@ export function seedDatabase(db: Database.Database) {
   for (const r of readers) insertReader.run(...r);
 
   // === Sách ===
-  const books = [
-    ['S001', 'Lập trình TypeScript', 'Nguyễn Minh Tuấn', TinhTrangSach.SAN_SANG],
-    ['S002', 'Cấu trúc dữ liệu và giải thuật', 'Trần Quốc Bảo', TinhTrangSach.SAN_SANG],
-    ['S003', 'Nhập môn Machine Learning', 'Lê Hoàng Nam', TinhTrangSach.SAN_SANG],
-    ['S004', 'Thiết kế hệ thống phần mềm', 'Phạm Văn Hòa', TinhTrangSach.DA_MUON],
-    ['S005', 'Lập trình Web với React', 'Võ Thị Lan', TinhTrangSach.SAN_SANG],
-    ['S006', 'Cơ sở dữ liệu nâng cao', 'Nguyễn Đức Thành', TinhTrangSach.SAN_SANG],
-    ['S007', 'Mạng máy tính', 'Trần Văn Hùng', TinhTrangSach.BAO_TRI],
-    ['S008', 'Trí tuệ nhân tạo', 'Lê Minh Đức', TinhTrangSach.SAN_SANG],
-    ['S009', 'Hệ điều hành Linux', 'Phạm Quốc Việt', TinhTrangSach.MAT],
-    ['S010', 'Python cho Data Science', 'Hoàng Thị Mai', TinhTrangSach.DA_MUON],
-    ['S011', 'Java Spring Boot', 'Nguyễn Văn Tùng', TinhTrangSach.SAN_SANG],
-    ['S012', 'Docker và Kubernetes', 'Trần Minh Quang', TinhTrangSach.SAN_SANG],
-    ['S013', 'Lập trình C++ hiện đại', 'Lê Thị Hoa', TinhTrangSach.SAN_SANG],
-    ['S014', 'Angular từ cơ bản đến nâng cao', 'Phạm Đức Long', TinhTrangSach.SAN_SANG],
-    ['S015', 'Node.js và Express', 'Võ Văn Thành', TinhTrangSach.DA_MUON],
-    ['S016', 'Toán rời rạc', 'Nguyễn Thị Nga', TinhTrangSach.SAN_SANG],
-    ['S017', 'Xử lý ảnh số', 'Trần Văn Đạt', TinhTrangSach.BAO_TRI],
-    ['S018', 'Lập trình di động với Flutter', 'Lê Văn Hải', TinhTrangSach.SAN_SANG],
-    ['S019', 'An toàn thông tin', 'Phạm Thị Loan', TinhTrangSach.SAN_SANG],
-    ['S020', 'Kiến trúc vi dịch vụ', 'Hoàng Văn Đức', TinhTrangSach.SAN_SANG],
-    ['S021', 'Phân tích dữ liệu với R', 'Võ Thị Hương', TinhTrangSach.SAN_SANG],
-    ['S022', 'Blockchain và ứng dụng', 'Nguyễn Quốc Anh', TinhTrangSach.MAT],
-    ['S023', 'DevOps thực hành', 'Trần Thị Thảo', TinhTrangSach.SAN_SANG],
-    ['S024', 'Lập trình game với Unity', 'Lê Đức Minh', TinhTrangSach.SAN_SANG],
-    ['S025', 'SQL Server nâng cao', 'Phạm Văn Khánh', TinhTrangSach.SAN_SANG],
+  // Format: [maSach, tieuDe, tacGia, soBanSao, soMat, soBaoTri]
+  // Các đầu sách phổ biến có nhiều bản sao để demo tính năng
+  const books: [string, string, string, number, number, number][] = [
+    ['S001', 'Lập trình TypeScript', 'Nguyễn Minh Tuấn', 5, 0, 0],           // sách hot, 5 bản
+    ['S002', 'Cấu trúc dữ liệu và giải thuật', 'Trần Quốc Bảo', 8, 0, 1],    // giáo trình, 8 bản, 1 bảo trì
+    ['S003', 'Nhập môn Machine Learning', 'Lê Hoàng Nam', 4, 0, 0],          // 4 bản
+    ['S004', 'Thiết kế hệ thống phần mềm', 'Phạm Văn Hòa', 3, 0, 0],         // 3 bản (1 đang mượn PM001)
+    ['S005', 'Lập trình Web với React', 'Võ Thị Lan', 6, 0, 0],              // sách hot, 6 bản
+    ['S006', 'Cơ sở dữ liệu nâng cao', 'Nguyễn Đức Thành', 4, 0, 0],
+    ['S007', 'Mạng máy tính', 'Trần Văn Hùng', 5, 0, 2],                     // 5 bản, 2 đang bảo trì
+    ['S008', 'Trí tuệ nhân tạo', 'Lê Minh Đức', 3, 0, 0],
+    ['S009', 'Hệ điều hành Linux', 'Phạm Quốc Việt', 2, 1, 0],               // mất 1 bản
+    ['S010', 'Python cho Data Science', 'Hoàng Thị Mai', 7, 0, 0],           // sách hot, 7 bản (1 đang mượn PM002)
+    ['S011', 'Java Spring Boot', 'Nguyễn Văn Tùng', 3, 0, 0],
+    ['S012', 'Docker và Kubernetes', 'Trần Minh Quang', 4, 0, 0],
+    ['S013', 'Lập trình C++ hiện đại', 'Lê Thị Hoa', 3, 0, 0],
+    ['S014', 'Angular từ cơ bản đến nâng cao', 'Phạm Đức Long', 2, 0, 0],
+    ['S015', 'Node.js và Express', 'Võ Văn Thành', 5, 0, 0],                 // 5 bản (1 đang mượn PM005)
+    ['S016', 'Toán rời rạc', 'Nguyễn Thị Nga', 6, 0, 0],                     // giáo trình, 6 bản
+    ['S017', 'Xử lý ảnh số', 'Trần Văn Đạt', 3, 0, 1],                       // 1 bảo trì
+    ['S018', 'Lập trình di động với Flutter', 'Lê Văn Hải', 2, 0, 0],
+    ['S019', 'An toàn thông tin', 'Phạm Thị Loan', 4, 0, 0],
+    ['S020', 'Kiến trúc vi dịch vụ', 'Hoàng Văn Đức', 2, 0, 0],
+    ['S021', 'Phân tích dữ liệu với R', 'Võ Thị Hương', 3, 0, 0],
+    ['S022', 'Blockchain và ứng dụng', 'Nguyễn Quốc Anh', 2, 1, 0],          // mất 1
+    ['S023', 'DevOps thực hành', 'Trần Thị Thảo', 4, 0, 0],
+    ['S024', 'Lập trình game với Unity', 'Lê Đức Minh', 2, 0, 0],
+    ['S025', 'SQL Server nâng cao', 'Phạm Văn Khánh', 3, 0, 0],
   ];
 
   const insertBook = db.prepare(`
-    INSERT INTO Sach (maSach, tieuDe, tacGia, tinhTrang)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO Sach (maSach, tieuDe, tacGia, soBanSao, soMat, soBaoTri)
+    VALUES (?, ?, ?, ?, ?, ?)
   `);
   for (const b of books) insertBook.run(...b);
 
@@ -142,9 +144,12 @@ export function seedDatabase(db: Database.Database) {
   console.log('  Thủ thư:       thuthu / 123456');
   console.log('  Quản trị viên: admin / 123456');
   console.log('');
-  console.log('Độc giả: DG001 - DG022 (22 người, 2+ pages)');
-  console.log('Sách: S001 - S025 (25 cuốn, 2+ pages)');
-  console.log('Phiếu mượn: PM001-PM005');
+  console.log('Độc giả: DG001 - DG022 (22 người)');
+  console.log('Sách: S001 - S025 (25 đầu sách, tổng ~90 bản sao)');
+  console.log('  - Sách nhiều bản: S002 (8), S010 (7), S005 (6), S016 (6), S001 (5), S007 (5), S015 (5)');
+  console.log('  - Có bảo trì: S002 (1), S007 (2), S017 (1)');
+  console.log('  - Có mất: S009 (1), S022 (1)');
+  console.log('Phiếu mượn: PM001-PM005 (3 đang mượn, 2 đã trả)');
 }
 
 // Run standalone: npx ts-node seed.ts

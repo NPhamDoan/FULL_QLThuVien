@@ -15,6 +15,7 @@ export function initializeDatabase(dbPath: string = './Database/dev.db'): Databa
   db.pragma('foreign_keys = ON');
   db.pragma('journal_mode = WAL');
 
+  // Create tables (latest schema)
   db.exec(`
     CREATE TABLE IF NOT EXISTS DocGia (
       maDocGia    TEXT PRIMARY KEY,
@@ -30,7 +31,9 @@ export function initializeDatabase(dbPath: string = './Database/dev.db'): Databa
       maSach    TEXT PRIMARY KEY,
       tieuDe    TEXT NOT NULL,
       tacGia    TEXT NOT NULL,
-      tinhTrang TEXT NOT NULL DEFAULT 'SAN_SANG' CHECK (tinhTrang IN ('SAN_SANG', 'DA_MUON', 'BAO_TRI', 'MAT')),
+      soBanSao  INTEGER NOT NULL DEFAULT 1 CHECK (soBanSao >= 0),
+      soMat     INTEGER NOT NULL DEFAULT 0 CHECK (soMat >= 0),
+      soBaoTri  INTEGER NOT NULL DEFAULT 0 CHECK (soBaoTri >= 0),
       createdAt TEXT NOT NULL DEFAULT (datetime('now')),
       updatedAt TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -67,7 +70,48 @@ export function initializeDatabase(dbPath: string = './Database/dev.db'): Databa
     CREATE INDEX IF NOT EXISTS idx_phieumuon_trangThai ON PhieuMuon(trangThai);
   `);
 
+  // Migration: if old Sach table has tinhTrang column, migrate to counters
+  migrateSachTinhTrang(db);
+
   return db;
+}
+
+/**
+ * Migration: old schema có column tinhTrang, đổi sang counters (soBanSao/soMat/soBaoTri).
+ * Logic: mỗi row Sach cũ đại diện 1 cuốn → soBanSao = 1, và đánh dấu soMat/soBaoTri theo tinhTrang cũ.
+ */
+function migrateSachTinhTrang(database: Database.Database): void {
+  const columns = database.prepare(`PRAGMA table_info(Sach)`).all() as { name: string }[];
+  const hasTinhTrang = columns.some(c => c.name === 'tinhTrang');
+  if (!hasTinhTrang) return;
+
+  console.log('[migration] Sach có column tinhTrang cũ, đang migrate...');
+
+  const migrate = database.transaction(() => {
+    // Thêm cột mới nếu chưa có
+    const hasSoBanSao = columns.some(c => c.name === 'soBanSao');
+    const hasSoMat = columns.some(c => c.name === 'soMat');
+    const hasSoBaoTri = columns.some(c => c.name === 'soBaoTri');
+
+    if (!hasSoBanSao) database.exec(`ALTER TABLE Sach ADD COLUMN soBanSao INTEGER NOT NULL DEFAULT 1`);
+    if (!hasSoMat) database.exec(`ALTER TABLE Sach ADD COLUMN soMat INTEGER NOT NULL DEFAULT 0`);
+    if (!hasSoBaoTri) database.exec(`ALTER TABLE Sach ADD COLUMN soBaoTri INTEGER NOT NULL DEFAULT 0`);
+
+    // Cập nhật counters dựa trên tinhTrang cũ
+    database.exec(`UPDATE Sach SET soMat = 1, soBanSao = 1 WHERE tinhTrang = 'MAT'`);
+    database.exec(`UPDATE Sach SET soBaoTri = 1, soBanSao = 1 WHERE tinhTrang = 'BAO_TRI'`);
+    database.exec(`UPDATE Sach SET soBanSao = 1 WHERE tinhTrang IN ('SAN_SANG', 'DA_MUON')`);
+
+    // Drop column tinhTrang (SQLite hỗ trợ DROP COLUMN từ v3.35+)
+    try {
+      database.exec(`ALTER TABLE Sach DROP COLUMN tinhTrang`);
+    } catch (err) {
+      console.warn('[migration] Không thể drop column tinhTrang (SQLite quá cũ?):', err);
+    }
+  });
+
+  migrate();
+  console.log('[migration] Sach đã migrate xong.');
 }
 
 export function getDatabase(): Database.Database {

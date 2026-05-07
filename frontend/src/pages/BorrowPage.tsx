@@ -10,7 +10,6 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import { readerApi, bookApi, loanApi } from '../services/api';
-import { TinhTrangSach } from '../constants';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -27,7 +26,11 @@ interface BookInfo {
   maSach: string;
   tieuDe: string;
   tacGia: string;
-  tinhTrang: string;
+  soBanSao: number;
+  soKhaDung: number;
+  soDangMuon: number;
+  soBaoTri: number;
+  soMat: number;
 }
 
 interface LoanResult {
@@ -35,13 +38,6 @@ interface LoanResult {
   ngayMuon: string;
   hanTra: string;
 }
-
-const TINH_TRANG: Record<string, { label: string; color: string }> = {
-  SAN_SANG: { label: 'Sẵn sàng', color: 'green' },
-  DA_MUON: { label: 'Đã mượn', color: 'red' },
-  BAO_TRI: { label: 'Bảo trì', color: 'orange' },
-  MAT: { label: 'Mất', color: 'default' },
-};
 
 const stepStyle = (active: boolean, done: boolean) => ({
   width: 40, height: 40, borderRadius: '50%',
@@ -131,8 +127,8 @@ export default function BorrowPage() {
   const handleShowAllBooks = () => { setBookKeyword(''); handleSearchBooks(''); };
 
   const handleSelectBook = (b: BookInfo) => {
-    if (b.tinhTrang !== TinhTrangSach.SAN_SANG) {
-      setBookError(`Sách "${b.tieuDe}" không khả dụng (${TINH_TRANG[b.tinhTrang]?.label || b.tinhTrang})`);
+    if (b.soKhaDung <= 0) {
+      setBookError(`Sách "${b.tieuDe}" không còn bản khả dụng (đang mượn ${b.soDangMuon}, bảo trì ${b.soBaoTri}, mất ${b.soMat})`);
       return;
     }
     setBookError(null);
@@ -193,13 +189,16 @@ export default function BorrowPage() {
     { title: 'Tiêu đề', dataIndex: 'tieuDe', key: 'tieuDe', width: 220,
       render: (v: string) => <span style={{ fontWeight: 500 }}>{v}</span> },
     { title: 'Tác giả', dataIndex: 'tacGia', key: 'tacGia', width: 160 },
-    { title: 'Tình trạng', dataIndex: 'tinhTrang', key: 'tinhTrang', width: 110,
-      render: (v: string) => <Tag color={TINH_TRANG[v]?.color || 'default'}>{TINH_TRANG[v]?.label || v}</Tag>,
+    { title: 'Khả dụng', key: 'soKhaDung', width: 110,
+      render: (_: unknown, b: BookInfo) => {
+        const color = b.soKhaDung > 0 ? 'green' : 'red';
+        return <Tag color={color}>{b.soKhaDung} / {b.soBanSao}</Tag>;
+      },
     },
     { title: '', key: 'action', width: 90,
       render: (_: unknown, b: BookInfo) => (
         <Button type="primary" size="small" onClick={() => handleSelectBook(b)}
-          disabled={b.tinhTrang !== TinhTrangSach.SAN_SANG} style={{ borderRadius: 8 }}>
+          disabled={b.soKhaDung <= 0} style={{ borderRadius: 8 }}>
           Chọn
         </Button>
       ),

@@ -24,7 +24,8 @@ export function createBookRoutes(
 
       // Unified keyword search across all fields (diacritics-aware)
       if (keyword) {
-        res.json(sachController.searchBooks(keyword as string, tinhTrang as string | undefined));
+        const onlyAvailable = tinhTrang === 'SAN_SANG' || tinhTrang === 'KHA_DUNG';
+        res.json(sachController.searchBooks(keyword as string, onlyAvailable));
         return;
       }
 

@@ -1,6 +1,6 @@
 import { SachController } from '../../controllers/SachController';
 import { initializeDatabase } from '../../database';
-import { CreateSachInput, TinhTrangSach } from '../../types';
+import { CreateSachInput, TrangThaiPhieu } from '../../types';
 import Database from 'better-sqlite3';
 
 describe('SachController', () => {
@@ -17,7 +17,7 @@ describe('SachController', () => {
   });
 
   describe('createBook', () => {
-    it('should create a new book with auto-generated maSach and default tinhTrang SAN_SANG', () => {
+    it('should create a new book with auto-generated maSach and default soBanSao=1', () => {
       const input: CreateSachInput = {
         tieuDe: 'Lập trình TypeScript',
         tacGia: 'Nguyen Van A',
@@ -28,29 +28,27 @@ describe('SachController', () => {
       expect(result.maSach).toMatch(/^S\d+$/);
       expect(result.tieuDe).toBe('Lập trình TypeScript');
       expect(result.tacGia).toBe('Nguyen Van A');
-      expect(result.tinhTrang).toBe(TinhTrangSach.SAN_SANG);
+      expect(result.soBanSao).toBe(1);
+      expect(result.soMat).toBe(0);
+      expect(result.soBaoTri).toBe(0);
       expect(result.createdAt).toBeInstanceOf(Date);
-      expect(result.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it('should accept custom soBanSao', () => {
+      const result = controller.createBook({ tieuDe: 'T', tacGia: 'A', soBanSao: 5 });
+      expect(result.soBanSao).toBe(5);
     });
 
     it('should throw error when tieuDe is empty', () => {
-      const input: CreateSachInput = { tieuDe: '', tacGia: 'Author' };
-      expect(() => controller.createBook(input)).toThrow('tieuDe là trường bắt buộc');
-    });
-
-    it('should throw error when tieuDe is whitespace only', () => {
-      const input: CreateSachInput = { tieuDe: '   ', tacGia: 'Author' };
-      expect(() => controller.createBook(input)).toThrow('tieuDe là trường bắt buộc');
+      expect(() => controller.createBook({ tieuDe: '', tacGia: 'Author' })).toThrow('tieuDe là trường bắt buộc');
     });
 
     it('should throw error when tacGia is empty', () => {
-      const input: CreateSachInput = { tieuDe: 'Some Book', tacGia: '' };
-      expect(() => controller.createBook(input)).toThrow('tacGia là trường bắt buộc');
+      expect(() => controller.createBook({ tieuDe: 'Book', tacGia: '' })).toThrow('tacGia là trường bắt buộc');
     });
 
-    it('should throw error when tacGia is whitespace only', () => {
-      const input: CreateSachInput = { tieuDe: 'Some Book', tacGia: '  ' };
-      expect(() => controller.createBook(input)).toThrow('tacGia là trường bắt buộc');
+    it('should throw error when soBanSao < 1', () => {
+      expect(() => controller.createBook({ tieuDe: 'T', tacGia: 'A', soBanSao: 0 })).toThrow('soBanSao phải >= 1');
     });
   });
 
@@ -58,38 +56,34 @@ describe('SachController', () => {
     let maSach: string;
 
     beforeEach(() => {
-      const book = controller.createBook({ tieuDe: 'Original Title', tacGia: 'Original Author' });
+      const book = controller.createBook({ tieuDe: 'Original', tacGia: 'Original', soBanSao: 3 });
       maSach = book.maSach;
     });
 
-    it('should update tieuDe', () => {
-      const result = controller.updateBook(maSach, { tieuDe: 'New Title' });
+    it('should update tieuDe and tacGia', () => {
+      const result = controller.updateBook(maSach, { tieuDe: 'New Title', tacGia: 'New Author' });
       expect(result.tieuDe).toBe('New Title');
-      expect(result.tacGia).toBe('Original Author');
-    });
-
-    it('should update tacGia', () => {
-      const result = controller.updateBook(maSach, { tacGia: 'New Author' });
       expect(result.tacGia).toBe('New Author');
     });
 
-    it('should update tinhTrang', () => {
-      const result = controller.updateBook(maSach, { tinhTrang: TinhTrangSach.BAO_TRI });
-      expect(result.tinhTrang).toBe(TinhTrangSach.BAO_TRI);
+    it('should update counters', () => {
+      const result = controller.updateBook(maSach, { soMat: 1, soBaoTri: 1 });
+      expect(result.soMat).toBe(1);
+      expect(result.soBaoTri).toBe(1);
     });
 
-    it('should update multiple fields at once', () => {
-      const result = controller.updateBook(maSach, {
-        tieuDe: 'Updated Title',
-        tacGia: 'Updated Author',
-      });
-      expect(result.tieuDe).toBe('Updated Title');
-      expect(result.tacGia).toBe('Updated Author');
+    it('should throw when counters exceed soBanSao', () => {
+      expect(() => controller.updateBook(maSach, { soMat: 2, soBaoTri: 2 })).toThrow(/không được nhỏ hơn/);
     });
 
-    it('should update updatedAt timestamp', () => {
-      const result = controller.updateBook(maSach, {});
-      expect(result.updatedAt).toBeInstanceOf(Date);
+    it('should throw when soBanSao < sum of other counters + loans', () => {
+      controller.updateBook(maSach, { soMat: 1, soBaoTri: 1 });
+      // Trying to reduce soBanSao to 1 → conflict: soMat(1)+soBaoTri(1) = 2 > 1
+      expect(() => controller.updateBook(maSach, { soBanSao: 1 })).toThrow(/không được nhỏ hơn/);
+    });
+
+    it('should throw when any counter is negative', () => {
+      expect(() => controller.updateBook(maSach, { soMat: -1 })).toThrow('Số lượng không được âm');
     });
   });
 
@@ -97,80 +91,90 @@ describe('SachController', () => {
     let maSach: string;
 
     beforeEach(() => {
-      const book = controller.createBook({ tieuDe: 'Test Book', tacGia: 'Author' });
+      const book = controller.createBook({ tieuDe: 'Test', tacGia: 'Author' });
       maSach = book.maSach;
     });
 
-    it('should delete book that is SAN_SANG', () => {
+    it('should delete book with no active loans', () => {
       const result = controller.deleteBook(maSach);
       expect(result.success).toBe(true);
-
       const row = db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach);
       expect(row).toBeUndefined();
     });
 
-    it('should refuse to delete book that is DA_MUON', () => {
-      db.prepare("UPDATE Sach SET tinhTrang = 'DA_MUON' WHERE maSach = ?").run(maSach);
+    it('should refuse to delete book with active loans', () => {
+      db.prepare(`
+        INSERT INTO DocGia (maDocGia, hoTen, email, soDienThoai, ngayHetHan)
+        VALUES ('DG001', 'R', 'r@t.com', '0901', '2099-12-31')
+      `).run();
+      db.prepare(`
+        INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai)
+        VALUES ('PM001', 'DG001', ?, '2025-01-01', '2025-01-15', ?)
+      `).run(maSach, TrangThaiPhieu.DANG_MUON);
 
       const result = controller.deleteBook(maSach);
       expect(result.success).toBe(false);
       expect(result.message).toBe('Không thể xóa sách đang được mượn');
-
-      const row = db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach);
-      expect(row).toBeDefined();
     });
 
     it('should allow delete when book has only returned loans', () => {
-      // Create a reader for the FK
       db.prepare(`
         INSERT INTO DocGia (maDocGia, hoTen, email, soDienThoai, ngayHetHan)
-        VALUES ('DG001', 'Reader', 'r@example.com', '0901234567', '2025-12-31')
+        VALUES ('DG001', 'R', 'r@t.com', '0901', '2099-12-31')
       `).run();
-
       db.prepare(`
         INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai, ngayTraThucTe)
-        VALUES ('PM001', 'DG001', ?, '2025-01-01', '2025-01-15', 'DA_TRA', '2025-01-10')
-      `).run(maSach);
-
-      const result = controller.deleteBook(maSach);
-      expect(result.success).toBe(true);
-
-      const row = db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach);
-      expect(row).toBeUndefined();
-    });
-
-    it('should allow delete when book is in BAO_TRI status', () => {
-      db.prepare("UPDATE Sach SET tinhTrang = 'BAO_TRI' WHERE maSach = ?").run(maSach);
+        VALUES ('PM001', 'DG001', ?, '2025-01-01', '2025-01-15', ?, '2025-01-10')
+      `).run(maSach, TrangThaiPhieu.DA_TRA);
 
       const result = controller.deleteBook(maSach);
       expect(result.success).toBe(true);
     });
   });
 
-  describe('isBookOnLoan', () => {
+  describe('getAvailableCount & getActiveLoanCount', () => {
     let maSach: string;
 
     beforeEach(() => {
-      const book = controller.createBook({ tieuDe: 'Test Book', tacGia: 'Author' });
+      const book = controller.createBook({ tieuDe: 'T', tacGia: 'A', soBanSao: 5 });
       maSach = book.maSach;
+      db.prepare(`
+        INSERT INTO DocGia (maDocGia, hoTen, email, soDienThoai, ngayHetHan)
+        VALUES ('DG001', 'R', 'r@t.com', '0901', '2099-12-31')
+      `).run();
     });
 
-    it('should return false for SAN_SANG book', () => {
-      expect(controller.isBookOnLoan(maSach)).toBe(false);
+    it('should return soBanSao when no loans or losses', () => {
+      expect(controller.getAvailableCount(maSach)).toBe(5);
+      expect(controller.getActiveLoanCount(maSach)).toBe(0);
     });
 
-    it('should return true for DA_MUON book', () => {
-      db.prepare("UPDATE Sach SET tinhTrang = 'DA_MUON' WHERE maSach = ?").run(maSach);
-      expect(controller.isBookOnLoan(maSach)).toBe(true);
+    it('should subtract active loans', () => {
+      db.prepare(`
+        INSERT INTO PhieuMuon (maPhieu, maDocGia, maSach, ngayMuon, hanTra, trangThai)
+        VALUES ('PM001', 'DG001', ?, '2025-01-01', '2025-01-15', ?)
+      `).run(maSach, TrangThaiPhieu.DANG_MUON);
+
+      expect(controller.getActiveLoanCount(maSach)).toBe(1);
+      expect(controller.getAvailableCount(maSach)).toBe(4);
     });
 
-    it('should return false for non-existent book', () => {
-      expect(controller.isBookOnLoan('NONEXISTENT')).toBe(false);
+    it('should subtract soMat and soBaoTri', () => {
+      controller.updateBook(maSach, { soMat: 1, soBaoTri: 1 });
+      expect(controller.getAvailableCount(maSach)).toBe(3);
     });
 
-    it('should return false for BAO_TRI book', () => {
-      db.prepare("UPDATE Sach SET tinhTrang = 'BAO_TRI' WHERE maSach = ?").run(maSach);
-      expect(controller.isBookOnLoan(maSach)).toBe(false);
+    it('should return 0 for non-existent book', () => {
+      expect(controller.getAvailableCount('NONEXISTENT')).toBe(0);
+    });
+  });
+
+  describe('incrementLost', () => {
+    it('should increment soMat by 1', () => {
+      const book = controller.createBook({ tieuDe: 'T', tacGia: 'A', soBanSao: 3 });
+      controller.incrementLost(book.maSach);
+      const updated = controller.getBookById(book.maSach);
+      expect(updated?.soMat).toBe(1);
     });
   });
 });

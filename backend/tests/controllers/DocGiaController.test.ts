@@ -139,8 +139,8 @@ describe('DocGiaController', () => {
     it('should refuse to delete member with active loans', () => {
       // Insert a book and an active loan
       db.prepare(`
-        INSERT INTO Sach (maSach, tieuDe, tacGia, tinhTrang)
-        VALUES ('S001', 'Test Book', 'Author', 'DA_MUON')
+        INSERT INTO Sach (maSach, tieuDe, tacGia)
+        VALUES ('S001', 'Test Book', 'Author')
       `).run();
 
       db.prepare(`
@@ -159,8 +159,8 @@ describe('DocGiaController', () => {
 
     it('should allow delete when all loans are returned', () => {
       db.prepare(`
-        INSERT INTO Sach (maSach, tieuDe, tacGia, tinhTrang)
-        VALUES ('S002', 'Test Book 2', 'Author', 'SAN_SANG')
+        INSERT INTO Sach (maSach, tieuDe, tacGia)
+        VALUES ('S002', 'Test Book 2', 'Author')
       `).run();
 
       db.prepare(`
@@ -192,8 +192,8 @@ describe('DocGiaController', () => {
 
     it('should return true when active loan exists', () => {
       db.prepare(`
-        INSERT INTO Sach (maSach, tieuDe, tacGia, tinhTrang)
-        VALUES ('S003', 'Book', 'Author', 'DA_MUON')
+        INSERT INTO Sach (maSach, tieuDe, tacGia)
+        VALUES ('S003', 'Book', 'Author')
       `).run();
 
       db.prepare(`
@@ -206,8 +206,8 @@ describe('DocGiaController', () => {
 
     it('should return false when all loans are returned', () => {
       db.prepare(`
-        INSERT INTO Sach (maSach, tieuDe, tacGia, tinhTrang)
-        VALUES ('S004', 'Book', 'Author', 'SAN_SANG')
+        INSERT INTO Sach (maSach, tieuDe, tacGia)
+        VALUES ('S004', 'Book', 'Author')
       `).run();
 
       db.prepare(`
