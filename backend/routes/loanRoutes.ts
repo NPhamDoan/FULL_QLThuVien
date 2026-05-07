@@ -63,6 +63,20 @@ export function createLoanRoutes(controller: PhieuMuonController): Router {
     }
   });
 
+  // GET /loans/:id/details - With docGia + sach info (for printing receipt)
+  router.get('/:id/details', (req: Request, res: Response) => {
+    try {
+      const details = controller.getLoanDetails(req.params.id as string);
+      if (!details) {
+        res.status(404).json({ error: 'Không tìm thấy phiếu mượn' });
+        return;
+      }
+      res.json(details);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /loans/:id/return - Trả sách
   router.post('/:id/return', (req: Request, res: Response) => {
     try {

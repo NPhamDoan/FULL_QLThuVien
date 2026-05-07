@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 import { Sach } from '../types';
-import { removeDiacritics } from '../utils/diacritics';
+import { filterByKeyword } from '../utils/diacritics';
 
 export class TraCuuHeThongController {
   private db: Database.Database;
@@ -11,27 +11,13 @@ export class TraCuuHeThongController {
 
   searchByTitle(keyword: string): Sach[] {
     const allBooks = this.db.prepare('SELECT * FROM Sach').all() as Record<string, unknown>[];
-    const normalizedKeyword = removeDiacritics(keyword).toLowerCase();
-
-    return allBooks
-      .filter(row => {
-        const title = row.tieuDe as string;
-        return title.toLowerCase().includes(keyword.toLowerCase())
-          || removeDiacritics(title).toLowerCase().includes(normalizedKeyword);
-      })
+    return filterByKeyword(allBooks, keyword, r => [r.tieuDe as string])
       .map(row => this.mapRowToSach(row));
   }
 
   searchByAuthor(keyword: string): Sach[] {
     const allBooks = this.db.prepare('SELECT * FROM Sach').all() as Record<string, unknown>[];
-    const normalizedKeyword = removeDiacritics(keyword).toLowerCase();
-
-    return allBooks
-      .filter(row => {
-        const author = row.tacGia as string;
-        return author.toLowerCase().includes(keyword.toLowerCase())
-          || removeDiacritics(author).toLowerCase().includes(normalizedKeyword);
-      })
+    return filterByKeyword(allBooks, keyword, r => [r.tacGia as string])
       .map(row => this.mapRowToSach(row));
   }
 

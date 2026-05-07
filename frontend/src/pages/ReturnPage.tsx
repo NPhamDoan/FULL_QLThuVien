@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { Button, Alert, Typography, Tag, Statistic, Checkbox, InputNumber, Space } from 'antd';
+import { Button, Alert, Typography, Tag, Statistic, Checkbox, InputNumber, Space, message } from 'antd';
 import { CheckCircleOutlined, ReloadOutlined, WarningOutlined } from '@ant-design/icons';
 import { loanApi } from '../services/api';
 import LoanSearchTable, { InfoItem, isOverdue, estimateFine, type LoanInfo } from '../components/LoanSearchTable';
+import LoanReceipt, { type LoanReceiptData } from '../components/LoanReceipt';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -15,15 +17,37 @@ interface ReturnResult {
 }
 
 export default function ReturnPage() {
+  const { user } = useAuth();
   const [selectedLoan, setSelectedLoan] = useState<LoanInfo | null>(null);
   const [returnResult, setReturnResult] = useState<ReturnResult | null>(null);
   const [returnLoading, setReturnLoading] = useState(false);
   const [returnError, setReturnError] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
 
+  // Receipt data for reprinting
+  const [receiptData, setReceiptData] = useState<LoanReceiptData | null>(null);
+
   // Mất sách option
   const [daMatSach, setDaMatSach] = useState(false);
   const [phiMat, setPhiMat] = useState<number>(0);
+
+  const handlePrint = async (loan: LoanInfo) => {
+    try {
+      const { data } = await loanApi.getDetails(loan.maPhieu);
+      setReceiptData({
+        maPhieu: data.maPhieu,
+        ngayMuon: data.ngayMuon,
+        hanTra: data.hanTra,
+        docGia: data.docGia,
+        sach: data.sach,
+        thuThu: user?.tenDangNhap,
+      });
+      // Wait a tick for component to render, then print
+      setTimeout(() => window.print(), 100);
+    } catch {
+      message.error('Không tải được thông tin phiếu');
+    }
+  };
 
   const handleReturn = async () => {
     if (!selectedLoan) return;
@@ -78,7 +102,7 @@ export default function ReturnPage() {
 
       {/* Search */}
       {!selectedLoan && !returnResult && (
-        <LoanSearchTable key={resetKey} onSelect={setSelectedLoan} selectLabel="Chọn trả" showEstimatedFine />
+        <LoanSearchTable key={resetKey} onSelect={setSelectedLoan} selectLabel="Chọn trả" showEstimatedFine onPrint={handlePrint} />
       )}
 
       {/* Selected loan — confirm return */}
@@ -195,6 +219,9 @@ export default function ReturnPage() {
           <Button icon={<ReloadOutlined />} onClick={handleReset} block style={{ height: 42 }}>Trả sách khác</Button>
         </div>
       )}
+
+      {/* Printable receipt (hidden on screen, visible when printing) */}
+      {receiptData && <LoanReceipt data={receiptData} />}
     </div>
   );
 }

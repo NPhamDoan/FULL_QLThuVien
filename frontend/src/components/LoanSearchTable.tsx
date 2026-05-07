@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Input, Button, Alert, Table, Tag, Select, Space, Typography } from 'antd';
-import { SearchOutlined } from '@ant-design/icons';
+import { SearchOutlined, PrinterOutlined } from '@ant-design/icons';
 import { loanApi } from '../services/api';
 import axios from 'axios';
 
@@ -25,6 +25,8 @@ interface Props {
   selectLabel?: string;
   /** Show estimated fine column (for return page) */
   showEstimatedFine?: boolean;
+  /** Callback to print receipt for a loan */
+  onPrint?: (loan: LoanInfo) => void;
 }
 
 export const isOverdue = (hanTra: string) => new Date() > new Date(hanTra);
@@ -42,7 +44,7 @@ export function InfoItem({ label, value, highlight }: { label: string; value: Re
   );
 }
 
-export default function LoanSearchTable({ onSelect, selectLabel = 'Chọn', showEstimatedFine = false }: Props) {
+export default function LoanSearchTable({ onSelect, selectLabel = 'Chọn', showEstimatedFine = false, onPrint }: Props) {
   const [keyword, setKeyword] = useState('');
   const [searchType, setSearchType] = useState<SearchType>('all');
   const [loans, setLoans] = useState<LoanInfo[]>([]);
@@ -110,11 +112,21 @@ export default function LoanSearchTable({ onSelect, selectLabel = 'Chọn', show
             isOverdue(r.hanTra) ? <Tag color="red">Quá hạn</Tag> : <Tag color="green">Trong hạn</Tag>,
         },
     {
-      title: '', key: 'action', width: 110,
+      title: '', key: 'action', width: onPrint ? 160 : 110,
       render: (_: unknown, r: LoanInfo) => (
-        <Button type="primary" size="small" onClick={() => onSelect(r)} style={{ borderRadius: 8 }}>
-          {selectLabel}
-        </Button>
+        <Space size={4}>
+          {onPrint && (
+            <Button
+              size="small"
+              icon={<PrinterOutlined />}
+              onClick={() => onPrint(r)}
+              title="In lại phiếu mượn"
+            />
+          )}
+          <Button type="primary" size="small" onClick={() => onSelect(r)} style={{ borderRadius: 8 }}>
+            {selectLabel}
+          </Button>
+        </Space>
       ),
     },
   ];

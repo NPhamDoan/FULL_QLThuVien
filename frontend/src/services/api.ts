@@ -102,6 +102,8 @@ export const loanApi = {
     api.post('/loans', { maDocGia, maSach }),
   getById: (id: string) =>
     api.get(`/loans/${id}`),
+  getDetails: (id: string) =>
+    api.get(`/loans/${id}/details`),
   returnBook: (id: string, options?: { daMatSach?: boolean; phiMat?: number }) =>
     api.post(`/loans/${id}/return`, options || {}),
   extend: (id: string) =>

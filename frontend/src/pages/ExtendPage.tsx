@@ -1,18 +1,39 @@
 import { useState } from 'react';
-import { Button, Alert, Typography, Tag } from 'antd';
+import { Button, Alert, Typography, Tag, message } from 'antd';
 import { CheckCircleOutlined, ReloadOutlined, CalendarOutlined } from '@ant-design/icons';
 import { loanApi } from '../services/api';
 import LoanSearchTable, { InfoItem, isOverdue, type LoanInfo } from '../components/LoanSearchTable';
+import LoanReceipt, { type LoanReceiptData } from '../components/LoanReceipt';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 const { Text } = Typography;
 
 export default function ExtendPage() {
+  const { user } = useAuth();
   const [selectedLoan, setSelectedLoan] = useState<LoanInfo | null>(null);
   const [extendedLoan, setExtendedLoan] = useState<LoanInfo | null>(null);
   const [extendLoading, setExtendLoading] = useState(false);
   const [extendError, setExtendError] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
+  const [receiptData, setReceiptData] = useState<LoanReceiptData | null>(null);
+
+  const handlePrint = async (loan: LoanInfo) => {
+    try {
+      const { data } = await loanApi.getDetails(loan.maPhieu);
+      setReceiptData({
+        maPhieu: data.maPhieu,
+        ngayMuon: data.ngayMuon,
+        hanTra: data.hanTra,
+        docGia: data.docGia,
+        sach: data.sach,
+        thuThu: user?.tenDangNhap,
+      });
+      setTimeout(() => window.print(), 100);
+    } catch {
+      message.error('Không tải được thông tin phiếu');
+    }
+  };
 
   const handleExtend = async () => {
     if (!selectedLoan) return;
@@ -50,7 +71,7 @@ export default function ExtendPage() {
 
       {/* Search */}
       {!selectedLoan && !extendedLoan && (
-        <LoanSearchTable key={resetKey} onSelect={setSelectedLoan} selectLabel="Chọn gia hạn" />
+        <LoanSearchTable key={resetKey} onSelect={setSelectedLoan} selectLabel="Chọn gia hạn" onPrint={handlePrint} />
       )}
 
       {/* Selected loan — confirm extend */}
@@ -97,6 +118,9 @@ export default function ExtendPage() {
           <Button icon={<ReloadOutlined />} onClick={handleReset} block style={{ height: 42 }}>Gia hạn phiếu khác</Button>
         </div>
       )}
+
+      {/* Printable receipt */}
+      {receiptData && <LoanReceipt data={receiptData} />}
     </div>
   );
 }

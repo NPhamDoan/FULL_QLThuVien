@@ -7,7 +7,7 @@ import {
   DeleteResult,
   TrangThaiPhieu,
 } from '../types';
-import { removeDiacritics } from '../utils/diacritics';
+import { filterByKeyword, matchesAny } from '../utils/diacritics';
 
 export class SachController {
   private db: Database.Database;
@@ -28,14 +28,7 @@ export class SachController {
 
   searchBooks(keyword: string, onlyAvailable?: boolean): SachWithAvailability[] {
     const all = this.listBooks();
-    const kw = keyword.toLowerCase();
-    const kwNorm = removeDiacritics(kw);
-    let filtered = all.filter(b => {
-      const fields = [b.maSach, b.tieuDe, b.tacGia].map(v => String(v || ''));
-      return fields.some(f =>
-        f.toLowerCase().includes(kw) || removeDiacritics(f).toLowerCase().includes(kwNorm)
-      );
-    });
+    let filtered = filterByKeyword(all, keyword, b => [b.maSach, b.tieuDe, b.tacGia]);
     if (onlyAvailable) {
       filtered = filtered.filter(b => b.soKhaDung > 0);
     }

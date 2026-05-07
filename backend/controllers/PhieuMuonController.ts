@@ -6,6 +6,7 @@ import {
   ReturnResult,
   TrangThaiPhieu,
 } from '../types';
+import { removeDiacritics, matchesAny } from '../utils/diacritics';
 
 export class PhieuMuonController {
   private db: Database.Database;
@@ -33,39 +34,36 @@ export class PhieuMuonController {
   }
 
   searchActiveLoans(keyword: string, searchType: string = 'all'): (PhieuMuon & { tenDocGia?: string; tenSach?: string })[] {
-    const like = `%${keyword}%`;
-    let whereClause: string;
-    let params: string[];
-
-    switch (searchType) {
-      case 'docgia':
-        whereClause = 'AND (dg.hoTen LIKE ?)';
-        params = [like];
-        break;
-      case 'sach':
-        whereClause = 'AND (s.tieuDe LIKE ?)';
-        params = [like];
-        break;
-      case 'maphieu':
-        whereClause = 'AND (pm.maPhieu LIKE ?)';
-        params = [like];
-        break;
-      default:
-        whereClause = 'AND (dg.hoTen LIKE ? OR s.tieuDe LIKE ? OR pm.maPhieu LIKE ? OR pm.maDocGia LIKE ? OR pm.maSach LIKE ?)';
-        params = [like, like, like, like, like];
-        break;
-    }
-
+    // Load all active loans with reader/book names
     const rows = this.db.prepare(`
       SELECT pm.*, dg.hoTen AS tenDocGia, s.tieuDe AS tenSach
       FROM PhieuMuon pm
       LEFT JOIN DocGia dg ON pm.maDocGia = dg.maDocGia
       LEFT JOIN Sach s ON pm.maSach = s.maSach
       WHERE pm.trangThai = ?
-        ${whereClause}
       ORDER BY pm.ngayMuon DESC
-    `).all(TrangThaiPhieu.DANG_MUON, ...params) as Record<string, unknown>[];
-    return rows.map((r) => ({
+    `).all(TrangThaiPhieu.DANG_MUON) as Record<string, unknown>[];
+
+    const filtered = rows.filter((r) => {
+      const tenDocGia = r.tenDocGia as string | undefined;
+      const tenSach = r.tenSach as string | undefined;
+      const maPhieu = r.maPhieu as string;
+      const maDocGia = r.maDocGia as string;
+      const maSach = r.maSach as string;
+
+      switch (searchType) {
+        case 'docgia':
+          return matchesAny([tenDocGia, maDocGia], keyword);
+        case 'sach':
+          return matchesAny([tenSach, maSach], keyword);
+        case 'maphieu':
+          return matchesAny([maPhieu], keyword);
+        default:
+          return matchesAny([tenDocGia, tenSach, maPhieu, maDocGia, maSach], keyword);
+      }
+    });
+
+    return filtered.map((r) => ({
       ...this.mapRowToPhieuMuon(r),
       tenDocGia: r.tenDocGia as string | undefined,
       tenSach: r.tenSach as string | undefined,
@@ -156,6 +154,36 @@ export class PhieuMuonController {
 
     if (!row) return null;
     return this.mapRowToPhieuMuon(row);
+  }
+
+  /** Get loan details với đầy đủ thông tin độc giả + sách (cho in phiếu) */
+  getLoanDetails(maPhieu: string) {
+    const row = this.db.prepare(`
+      SELECT pm.*,
+             dg.hoTen AS dg_hoTen, dg.email AS dg_email, dg.soDienThoai AS dg_soDienThoai,
+             s.tieuDe AS s_tieuDe, s.tacGia AS s_tacGia
+      FROM PhieuMuon pm
+      LEFT JOIN DocGia dg ON pm.maDocGia = dg.maDocGia
+      LEFT JOIN Sach s ON pm.maSach = s.maSach
+      WHERE pm.maPhieu = ?
+    `).get(maPhieu) as Record<string, unknown> | undefined;
+
+    if (!row) return null;
+
+    return {
+      ...this.mapRowToPhieuMuon(row),
+      docGia: {
+        maDocGia: row.maDocGia as string,
+        hoTen: row.dg_hoTen as string,
+        email: row.dg_email as string,
+        soDienThoai: row.dg_soDienThoai as string,
+      },
+      sach: {
+        maSach: row.maSach as string,
+        tieuDe: row.s_tieuDe as string,
+        tacGia: row.s_tacGia as string,
+      },
+    };
   }
 
   findLoanByBook(maSach: string): PhieuMuon | null {

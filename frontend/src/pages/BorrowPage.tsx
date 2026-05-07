@@ -8,8 +8,11 @@ import {
   FileDoneOutlined,
   ArrowRightOutlined,
   ReloadOutlined,
+  PrinterOutlined,
 } from '@ant-design/icons';
 import { readerApi, bookApi, loanApi } from '../services/api';
+import LoanReceipt, { type LoanReceiptData } from '../components/LoanReceipt';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 const { Text } = Typography;
@@ -50,6 +53,8 @@ const stepStyle = (active: boolean, done: boolean) => ({
 });
 
 export default function BorrowPage() {
+  const { user } = useAuth();
+
   // Step 1: Reader search
   const [readerKeyword, setReaderKeyword] = useState('');
   const [readers, setReaders] = useState<ReaderInfo[]>([]);
@@ -438,10 +443,38 @@ export default function BorrowPage() {
             <InfoItem label="Độc giả" value={selectedReader?.hoTen || ''} />
             <InfoItem label="Sách" value={selectedBook?.tieuDe || ''} />
           </div>
-          <Button icon={<ReloadOutlined />} onClick={handleReset} block style={{ height: 42 }}>
-            Tạo phiếu mượn mới
-          </Button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <Button icon={<PrinterOutlined />} onClick={() => window.print()} type="primary" style={{ flex: 1, height: 42 }}>
+              In phiếu mượn
+            </Button>
+            <Button icon={<ReloadOutlined />} onClick={handleReset} style={{ flex: 1, height: 42 }}>
+              Tạo phiếu mới
+            </Button>
+          </div>
         </div>
+      )}
+
+      {/* Printable receipt (hidden on screen, visible when printing) */}
+      {loanResult && selectedReader && selectedBook && (
+        <LoanReceipt
+          data={{
+            maPhieu: loanResult.maPhieu,
+            ngayMuon: loanResult.ngayMuon,
+            hanTra: loanResult.hanTra,
+            docGia: {
+              maDocGia: selectedReader.maDocGia,
+              hoTen: selectedReader.hoTen,
+              email: selectedReader.email,
+              soDienThoai: selectedReader.soDienThoai,
+            },
+            sach: {
+              maSach: selectedBook.maSach,
+              tieuDe: selectedBook.tieuDe,
+              tacGia: selectedBook.tacGia,
+            },
+            thuThu: user?.tenDangNhap,
+          }}
+        />
       )}
     </div>
   );
