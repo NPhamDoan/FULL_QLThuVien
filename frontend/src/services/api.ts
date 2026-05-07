@@ -70,7 +70,7 @@ export const bookApi = {
     api.get('/books'),
   search: (params: { tieuDe?: string; tacGia?: string; maSach?: string; keyword?: string; tinhTrang?: string }) =>
     api.get('/books/search', { params }),
-  create: (data: { tieuDe: string; tacGia: string }) =>
+  create: (data: { tieuDe: string; tacGia: string; soBanSao?: number }) =>
     api.post('/books', data),
   update: (id: string, data: Record<string, unknown>) =>
     api.put(`/books/${id}`, data),

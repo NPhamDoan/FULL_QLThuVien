@@ -11,7 +11,7 @@ import {
   PrinterOutlined,
 } from '@ant-design/icons';
 import { readerApi, bookApi, loanApi } from '../services/api';
-import LoanReceipt, { type LoanReceiptData } from '../components/LoanReceipt';
+import LoanReceipt from '../components/LoanReceipt';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 

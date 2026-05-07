@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Table, Button, Typography, message, Tag, Space } from 'antd';
+import { Table, Button, Typography, message, Tag } from 'antd';
 import { DownloadOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { backupApi } from '../services/api';
 
@@ -64,7 +64,7 @@ export default function BackupsPage() {
     },
     {
       title: 'Trạng thái', key: 'status', width: 120,
-      render: (_: unknown, r: BackupFile, i: number) =>
+      render: (_: unknown, _r: BackupFile, i: number) =>
         i === 0 ? <Tag color="green">Mới nhất</Tag> : <Tag>Cũ</Tag>,
     },
     {

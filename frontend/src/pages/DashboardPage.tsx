@@ -56,7 +56,7 @@ export default function DashboardPage() {
   useEffect(() => {
     async function fetchAll() {
       try {
-        const [booksRes, readersRes, inventoryRes, overdueRes, activeRes] = await Promise.all([
+        const [_booksRes, readersRes, inventoryRes, overdueRes, activeRes] = await Promise.all([
           bookApi.list(),
           readerApi.list(),
           reportApi.getInventory(),
