@@ -36,30 +36,30 @@ describe('TaiKhoanController', () => {
     db.close();
   });
 
-  describe('dangNhap', () => {
+  describe('login', () => {
     it('should return USER_NOT_FOUND when username does not exist', async () => {
-      const result = await controller.dangNhap('nonexistent', 'any-password');
+      const result = await controller.login('nonexistent', 'any-password');
       expect(result.success).toBe(false);
       expect(result.error).toBe(LoginError.USER_NOT_FOUND);
       expect(result.taiKhoan).toBeUndefined();
     });
 
     it('should return WRONG_PASSWORD when password is incorrect', async () => {
-      const result = await controller.dangNhap('thuthu1', 'wrong-password');
+      const result = await controller.login('thuthu1', 'wrong-password');
       expect(result.success).toBe(false);
       expect(result.error).toBe(LoginError.WRONG_PASSWORD);
       expect(result.taiKhoan).toBeUndefined();
     });
 
     it('should return ACCOUNT_LOCKED when account is locked', async () => {
-      const result = await controller.dangNhap('locked_user', 'locked-pass');
+      const result = await controller.login('locked_user', 'locked-pass');
       expect(result.success).toBe(false);
       expect(result.error).toBe(LoginError.ACCOUNT_LOCKED);
       expect(result.taiKhoan).toBeUndefined();
     });
 
     it('should return success with taiKhoan for valid THU_THU login', async () => {
-      const result = await controller.dangNhap('thuthu1', 'correct-password');
+      const result = await controller.login('thuthu1', 'correct-password');
       expect(result.success).toBe(true);
       expect(result.error).toBeUndefined();
       expect(result.taiKhoan).toBeDefined();
@@ -70,7 +70,7 @@ describe('TaiKhoanController', () => {
     });
 
     it('should return success with taiKhoan for valid QUAN_TRI_VIEN login', async () => {
-      const result = await controller.dangNhap('admin1', 'correct-password');
+      const result = await controller.login('admin1', 'correct-password');
       expect(result.success).toBe(true);
       expect(result.taiKhoan).toBeDefined();
       expect(result.taiKhoan!.maTaiKhoan).toBe('TK002');
@@ -78,25 +78,25 @@ describe('TaiKhoanController', () => {
     });
   });
 
-  describe('dangXuat', () => {
+  describe('logout', () => {
     it('should resolve without error (no-op)', async () => {
-      await expect(controller.dangXuat('TK001')).resolves.toBeUndefined();
+      await expect(controller.logout('TK001')).resolves.toBeUndefined();
     });
   });
 
-  describe('kiemTraQuyen', () => {
-    it('should return true when vaiTro matches quyen', () => {
-      expect(controller.kiemTraQuyen('TK001', VaiTro.THU_THU)).toBe(true);
-      expect(controller.kiemTraQuyen('TK002', VaiTro.QUAN_TRI_VIEN)).toBe(true);
+  describe('checkRole', () => {
+    it('should return true when vaiTro matches', () => {
+      expect(controller.checkRole('TK001', VaiTro.THU_THU)).toBe(true);
+      expect(controller.checkRole('TK002', VaiTro.QUAN_TRI_VIEN)).toBe(true);
     });
 
-    it('should return false when vaiTro does not match quyen', () => {
-      expect(controller.kiemTraQuyen('TK001', VaiTro.QUAN_TRI_VIEN)).toBe(false);
-      expect(controller.kiemTraQuyen('TK002', VaiTro.THU_THU)).toBe(false);
+    it('should return false when vaiTro does not match', () => {
+      expect(controller.checkRole('TK001', VaiTro.QUAN_TRI_VIEN)).toBe(false);
+      expect(controller.checkRole('TK002', VaiTro.THU_THU)).toBe(false);
     });
 
     it('should return false when maTaiKhoan does not exist', () => {
-      expect(controller.kiemTraQuyen('NONEXISTENT', VaiTro.THU_THU)).toBe(false);
+      expect(controller.checkRole('NONEXISTENT', VaiTro.THU_THU)).toBe(false);
     });
   });
 });

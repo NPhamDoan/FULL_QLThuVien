@@ -9,7 +9,7 @@ function isAdmin(controller: TaiKhoanController, req: Request): boolean {
   const auth = req.headers.authorization;
   if (!auth) return false;
   const maTaiKhoan = auth.replace('Bearer ', '');
-  return controller.kiemTraQuyen(maTaiKhoan, VaiTro.QUAN_TRI_VIEN);
+  return controller.checkRole(maTaiKhoan, VaiTro.QUAN_TRI_VIEN);
 }
 
 export function createBackupRoutes(

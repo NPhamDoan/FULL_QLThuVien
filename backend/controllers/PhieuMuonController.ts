@@ -257,13 +257,13 @@ export class PhieuMuonController {
       throw new Error('Phiếu mượn đã hoàn tất, không thể gia hạn');
     }
 
-    const newHanTra = new Date(loan.hanTra);
-    newHanTra.setDate(newHanTra.getDate() + 7);
-    const newHanTraStr = newHanTra.toISOString().split('T')[0];
+    const hanTraMoi = new Date(loan.hanTra);
+    hanTraMoi.setDate(hanTraMoi.getDate() + 7);
+    const hanTraMoiStr = hanTraMoi.toISOString().split('T')[0];
 
     this.db.prepare(`
       UPDATE PhieuMuon SET hanTra = ?, updatedAt = datetime('now') WHERE maPhieu = ?
-    `).run(newHanTraStr, maPhieu);
+    `).run(hanTraMoiStr, maPhieu);
 
     return this.findLoanByCode(maPhieu)!;
   }

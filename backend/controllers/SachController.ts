@@ -7,7 +7,7 @@ import {
   DeleteResult,
   TrangThaiPhieu,
 } from '../types';
-import { filterByKeyword, matchesAny } from '../utils/diacritics';
+import { filterByKeyword } from '../utils/diacritics';
 
 export class SachController {
   private db: Database.Database;
@@ -18,12 +18,12 @@ export class SachController {
 
   listBooks(): SachWithAvailability[] {
     const rows = this.db.prepare('SELECT * FROM Sach ORDER BY createdAt DESC').all() as Record<string, unknown>[];
-    return rows.map(r => this.mapRowToSachWithAvailability(r));
+    return rows.map(r => this.withAvailability(this.mapRowToSach(r)));
   }
 
   getBookById(maSach: string): SachWithAvailability | null {
     const row = this.db.prepare('SELECT * FROM Sach WHERE maSach = ?').get(maSach) as Record<string, unknown> | undefined;
-    return row ? this.mapRowToSachWithAvailability(row) : null;
+    return row ? this.withAvailability(this.mapRowToSach(row)) : null;
   }
 
   searchBooks(keyword: string, onlyAvailable?: boolean): SachWithAvailability[] {
@@ -77,17 +77,17 @@ export class SachController {
     }
 
     // Compute new counter values (for validation)
-    const newSoBanSao = data.soBanSao ?? (current.soBanSao as number);
-    const newSoMat = data.soMat ?? (current.soMat as number);
-    const newSoBaoTri = data.soBaoTri ?? (current.soBaoTri as number);
+    const soBanSaoMoi = data.soBanSao ?? (current.soBanSao as number);
+    const soMatMoi = data.soMat ?? (current.soMat as number);
+    const soBaoTriMoi = data.soBaoTri ?? (current.soBaoTri as number);
     const soDangMuon = this.getActiveLoanCount(maSach);
 
-    if (newSoBanSao < newSoMat + newSoBaoTri + soDangMuon) {
+    if (soBanSaoMoi < soMatMoi + soBaoTriMoi + soDangMuon) {
       throw new Error(
-        `soBanSao (${newSoBanSao}) không được nhỏ hơn tổng (mất ${newSoMat} + bảo trì ${newSoBaoTri} + đang mượn ${soDangMuon} = ${newSoMat + newSoBaoTri + soDangMuon})`
+        `soBanSao (${soBanSaoMoi}) không được nhỏ hơn tổng (mất ${soMatMoi} + bảo trì ${soBaoTriMoi} + đang mượn ${soDangMuon} = ${soMatMoi + soBaoTriMoi + soDangMuon})`
       );
     }
-    if (newSoBanSao < 0 || newSoMat < 0 || newSoBaoTri < 0) {
+    if (soBanSaoMoi < 0 || soMatMoi < 0 || soBaoTriMoi < 0) {
       throw new Error('Số lượng không được âm');
     }
 
@@ -149,10 +149,10 @@ export class SachController {
     };
   }
 
-  private mapRowToSachWithAvailability(row: Record<string, unknown>): SachWithAvailability {
-    const base = this.mapRowToSach(row);
-    const soDangMuon = this.getActiveLoanCount(base.maSach);
-    const soKhaDung = base.soBanSao - base.soMat - base.soBaoTri - soDangMuon;
-    return { ...base, soDangMuon, soKhaDung };
+  /** Thêm thông tin availability (soDangMuon, soKhaDung) vào Sach */
+  private withAvailability(sach: Sach): SachWithAvailability {
+    const soDangMuon = this.getActiveLoanCount(sach.maSach);
+    const soKhaDung = sach.soBanSao - sach.soMat - sach.soBaoTri - soDangMuon;
+    return { ...sach, soDangMuon, soKhaDung };
   }
 }

@@ -9,7 +9,7 @@ export class TaiKhoanController {
     this.db = db;
   }
 
-  async dangNhap(tenDangNhap: string, matKhau: string): Promise<LoginResult> {
+  async login(tenDangNhap: string, matKhau: string): Promise<LoginResult> {
     const row = this.db.prepare(
       'SELECT * FROM TaiKhoan WHERE tenDangNhap = ?'
     ).get(tenDangNhap) as Record<string, unknown> | undefined;
@@ -40,11 +40,11 @@ export class TaiKhoanController {
     return { success: true, taiKhoan };
   }
 
-  async dangXuat(_maTaiKhoan: string): Promise<void> {
+  async logout(_maTaiKhoan: string): Promise<void> {
     // No-op: session management handled at middleware level
   }
 
-  kiemTraQuyen(maTaiKhoan: string, quyen: string): boolean {
+  checkRole(maTaiKhoan: string, vaiTro: string): boolean {
     const row = this.db.prepare(
       'SELECT vaiTro FROM TaiKhoan WHERE maTaiKhoan = ?'
     ).get(maTaiKhoan) as { vaiTro: string } | undefined;
@@ -53,18 +53,18 @@ export class TaiKhoanController {
       return false;
     }
 
-    return row.vaiTro === quyen;
+    return row.vaiTro === vaiTro;
   }
 
   // === User Management (Admin only) ===
 
-  danhSachTaiKhoan() {
+  listAccounts() {
     return this.db.prepare(
       'SELECT maTaiKhoan, tenDangNhap, vaiTro, trangThai, createdAt, updatedAt FROM TaiKhoan ORDER BY createdAt DESC'
     ).all();
   }
 
-  async taoTaiKhoan(tenDangNhap: string, matKhau: string, vaiTro: VaiTro) {
+  async createAccount(tenDangNhap: string, matKhau: string, vaiTro: VaiTro) {
     const existing = this.db.prepare('SELECT maTaiKhoan FROM TaiKhoan WHERE tenDangNhap = ?').get(tenDangNhap);
     if (existing) {
       return { success: false, error: 'Tên đăng nhập đã tồn tại' };
@@ -83,7 +83,7 @@ export class TaiKhoanController {
     return { success: true, maTaiKhoan };
   }
 
-  capNhatTrangThai(maTaiKhoan: string, trangThai: TrangThaiTaiKhoan) {
+  updateStatus(maTaiKhoan: string, trangThai: TrangThaiTaiKhoan) {
     const row = this.db.prepare('SELECT maTaiKhoan FROM TaiKhoan WHERE maTaiKhoan = ?').get(maTaiKhoan);
     if (!row) {
       return { success: false, error: 'Tài khoản không tồn tại' };
@@ -94,7 +94,7 @@ export class TaiKhoanController {
     return { success: true };
   }
 
-  async doiMatKhau(maTaiKhoan: string, matKhauMoi: string) {
+  async resetPassword(maTaiKhoan: string, matKhauMoi: string) {
     const row = this.db.prepare('SELECT maTaiKhoan FROM TaiKhoan WHERE maTaiKhoan = ?').get(maTaiKhoan);
     if (!row) {
       return { success: false, error: 'Tài khoản không tồn tại' };
@@ -106,7 +106,7 @@ export class TaiKhoanController {
     return { success: true };
   }
 
-  xoaTaiKhoan(maTaiKhoan: string) {
+  deleteAccount(maTaiKhoan: string) {
     const row = this.db.prepare('SELECT maTaiKhoan FROM TaiKhoan WHERE maTaiKhoan = ?').get(maTaiKhoan);
     if (!row) {
       return { success: false, error: 'Tài khoản không tồn tại' };

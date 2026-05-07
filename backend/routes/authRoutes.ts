@@ -6,7 +6,7 @@ function getAdminCheck(controller: TaiKhoanController, req: Request): boolean {
   const auth = req.headers.authorization;
   if (!auth) return false;
   const maTaiKhoan = auth.replace('Bearer ', '');
-  return controller.kiemTraQuyen(maTaiKhoan, VaiTro.QUAN_TRI_VIEN);
+  return controller.checkRole(maTaiKhoan, VaiTro.QUAN_TRI_VIEN);
 }
 
 export function createAuthRoutes(controller: TaiKhoanController): Router {
@@ -20,7 +20,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
         res.status(400).json({ error: 'tenDangNhap và matKhau là bắt buộc' });
         return;
       }
-      const result = await controller.dangNhap(tenDangNhap, matKhau);
+      const result = await controller.login(tenDangNhap, matKhau);
       if (result.success && result.taiKhoan) {
         res.json(result);
       } else {
@@ -39,7 +39,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
         res.status(400).json({ error: 'maTaiKhoan là bắt buộc' });
         return;
       }
-      await controller.dangXuat(maTaiKhoan);
+      await controller.logout(maTaiKhoan);
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: 'Lỗi hệ thống' });
@@ -53,7 +53,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
       return;
     }
     try {
-      const data = controller.danhSachTaiKhoan();
+      const data = controller.listAccounts();
       res.json({ success: true, data });
     } catch (error) {
       res.status(500).json({ error: 'Lỗi hệ thống' });
@@ -72,7 +72,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
         res.status(400).json({ error: 'tenDangNhap, matKhau và vaiTro là bắt buộc' });
         return;
       }
-      const result = await controller.taoTaiKhoan(tenDangNhap, matKhau, vaiTro);
+      const result = await controller.createAccount(tenDangNhap, matKhau, vaiTro);
       if (result.success) {
         res.json(result);
       } else {
@@ -95,7 +95,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
         res.status(400).json({ error: 'trangThai là bắt buộc' });
         return;
       }
-      const result = controller.capNhatTrangThai(req.params.id as string, trangThai);
+      const result = controller.updateStatus(req.params.id as string, trangThai);
       if (result.success) {
         res.json(result);
       } else {
@@ -118,7 +118,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
         res.status(400).json({ error: 'matKhau là bắt buộc' });
         return;
       }
-      const result = await controller.doiMatKhau(req.params.id as string, matKhau);
+      const result = await controller.resetPassword(req.params.id as string, matKhau);
       if (result.success) {
         res.json(result);
       } else {
@@ -136,7 +136,7 @@ export function createAuthRoutes(controller: TaiKhoanController): Router {
       return;
     }
     try {
-      const result = controller.xoaTaiKhoan(req.params.id as string);
+      const result = controller.deleteAccount(req.params.id as string);
       if (result.success) {
         res.json(result);
       } else {

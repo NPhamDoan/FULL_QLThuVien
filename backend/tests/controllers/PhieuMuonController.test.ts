@@ -186,9 +186,9 @@ describe('PhieuMuonController', () => {
     });
 
     it('should increment soMat when daMatSach=true', () => {
-      const futureHan = new Date();
-      futureHan.setDate(futureHan.getDate() + 7);
-      insertPhieuMuon('PM001', 'DG001', 'S001', { hanTra: futureHan.toISOString().split('T')[0] });
+      const hanTraMoi = new Date();
+      hanTraMoi.setDate(hanTraMoi.getDate() + 7);
+      insertPhieuMuon('PM001', 'DG001', 'S001', { hanTra: hanTraMoi.toISOString().split('T')[0] });
       const result = controller.returnBook('PM001', { daMatSach: true, phiMat: 100000 });
       expect(result.daMatSach).toBe(true);
       expect(result.tienPhat).toBe(100000);
@@ -197,9 +197,9 @@ describe('PhieuMuonController', () => {
     });
 
     it('should combine fine and phiMat in tienPhat', () => {
-      const pastHan = new Date();
-      pastHan.setDate(pastHan.getDate() - 3);
-      insertPhieuMuon('PM001', 'DG001', 'S001', { hanTra: pastHan.toISOString().split('T')[0] });
+      const hanTraCu = new Date();
+      hanTraCu.setDate(hanTraCu.getDate() - 3);
+      insertPhieuMuon('PM001', 'DG001', 'S001', { hanTra: hanTraCu.toISOString().split('T')[0] });
       const result = controller.returnBook('PM001', { daMatSach: true, phiMat: 50000 });
       // 3 days overdue × 5000 + 50000 phiMat
       expect(result.tienPhat).toBeGreaterThanOrEqual(50000 + 15000);
