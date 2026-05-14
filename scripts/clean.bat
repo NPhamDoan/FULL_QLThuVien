@@ -3,6 +3,8 @@ echo === Clean Project ===
 echo Xoa cac thu muc generated, giu lai source code
 echo.
 
+cd %~dp0..
+
 echo [1/6] Xoa backend\node_modules...
 if exist backend\node_modules rmdir /s /q backend\node_modules
 
@@ -24,4 +26,4 @@ if exist Deploy rmdir /s /q Deploy
 
 echo.
 echo === Clean xong! ===
-echo Chay 'start.bat' hoac 'build.bat' de setup lai.
+echo Chay 'start.bat' de setup lai.

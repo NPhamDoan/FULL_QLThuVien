@@ -1,0 +1,25 @@
+@startuml Enums
+skinparam classAttributeIconSize 0
+
+enum TrangThaiPhieu {
+    DANG_MUON
+    DA_TRA
+}
+
+enum VaiTro {
+    THU_THU
+    QUAN_TRI_VIEN
+}
+
+enum TrangThaiTaiKhoan {
+    HOAT_DONG
+    BI_KHOA
+}
+
+note as N1
+  <b>TinhTrangSach đã bỏ</b>
+  Thay bằng counters:
+  soBanSao, soMat, soBaoTri
+  soKhaDung = derived runtime
+end note
+@enduml

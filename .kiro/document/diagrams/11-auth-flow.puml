@@ -1,0 +1,42 @@
+@startuml Authentication Flow
+actor "User (Browser)" as Client
+participant "Frontend\n(React)" as FE
+participant "Backend\n(Express)" as BE
+database "SQLite" as DB
+
+== Login ==
+Client -> FE : Nhập tenDangNhap + matKhau
+FE -> BE : POST /auth/login\n{tenDangNhap, matKhau}
+BE -> DB : SELECT * FROM TaiKhoan\nWHERE tenDangNhap = ?
+DB --> BE : row (hoặc null)
+BE -> BE : bcrypt.compare(matKhau, row.matKhau)
+
+alt Thành công
+    BE --> FE : 200 {success: true, taiKhoan: {...}}
+    FE -> FE : localStorage.setItem('lms_user',\n{maTaiKhoan, tenDangNhap, vaiTro})
+    FE --> Client : Redirect → Dashboard
+else Sai mật khẩu / Không tồn tại / Bị khóa
+    BE --> FE : 401 {success: false, error: 'WRONG_PASSWORD'}
+    FE --> Client : Hiển thị lỗi
+end
+
+== Authenticated Request ==
+Client -> FE : Click "Quản lý tài khoản"
+FE -> FE : Axios interceptor:\nAuthorization = Bearer {maTaiKhoan}
+FE -> BE : GET /auth/accounts\n[Authorization: Bearer TK002]
+BE -> DB : SELECT vaiTro FROM TaiKhoan\nWHERE maTaiKhoan = 'TK002'
+DB --> BE : QUAN_TRI_VIEN
+
+alt Là Admin
+    BE --> FE : 200 {data: [...accounts]}
+    FE --> Client : Hiển thị bảng tài khoản
+else Không phải Admin
+    BE --> FE : 403 {error: "Chỉ admin"}
+    FE --> Client : Redirect → /
+end
+
+== Logout ==
+Client -> FE : Click "Đăng xuất"
+FE -> FE : localStorage.removeItem('lms_user')
+FE --> Client : Redirect → /login
+@enduml

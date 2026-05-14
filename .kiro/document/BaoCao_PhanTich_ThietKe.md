@@ -11,7 +11,7 @@ Hệ thống Quản lý Thư viện (Library Management System) là phần mềm
 | Thu_Thu | Thủ thư - nhân viên thư viện |
 | Quan_Tri | Quản trị viên - người quản lý hệ thống |
 | Doc_Gia | Độc giả - người sử dụng dịch vụ |
-| Sach | Đối tượng sách (mã, tiêu đề, tác giả, tình trạng) |
+| Sach | Đối tượng sách (mã, tiêu đề, tác giả, counters bản sao) |
 | Phieu_Muon | Bản ghi mượn sách (mã phiếu, ngày mượn, hạn trả, tiền phạt) |
 | Tai_Khoan | Tài khoản đăng nhập hệ thống |
 | So_Muon_Tra | Sổ ghi chép mượn trả sách (thủ công) |
@@ -63,9 +63,9 @@ flowchart LR
 3. PM hiển thị danh sách kết quả, thủ thư chọn độc giả
 4. PM kiểm tra hợp lệ (tồn tại + thẻ chưa hết hạn)
 5. Thủ thư tìm kiếm sách (theo mã, tiêu đề hoặc tác giả - hỗ trợ không dấu)
-6. PM hiển thị sách kèm tình trạng, thủ thư chọn sách sẵn sàng
+6. PM hiển thị sách kèm số khả dụng, thủ thư chọn sách có soKhaDung > 0
 7. Thủ thư xác nhận → PM tạo Phieu_Muon (hanTra = ngayMuon + 14 ngày)
-8. PM cập nhật Sach.tinhTrang = DA_MUON (trong transaction)
+8. PM kiểm tra soKhaDung > 0 trong transaction, INSERT PhieuMuon (không UPDATE Sach)
 
 ```mermaid
 sequenceDiagram
@@ -83,14 +83,14 @@ sequenceDiagram
     else Hợp lệ
         PM-->>TT: Thông tin độc giả ✓
         TT->>PM: Tìm kiếm sách (mã/tiêu đề/tác giả)
-        PM-->>TT: Danh sách sách + tình trạng
-        TT->>PM: Chọn sách SAN_SANG
-        alt Không khả dụng
-            PM-->>TT: Lỗi "Sách không khả dụng"
-        else Khả dụng
+        PM-->>TT: Danh sách sách + số khả dụng
+        TT->>PM: Chọn sách (soKhaDung > 0)
+        alt Hết bản khả dụng
+            PM-->>TT: Lỗi "Hết bản khả dụng"
+        else Còn bản
             PM-->>TT: Thông tin sách ✓
             TT->>PM: Xác nhận mượn
-            PM->>PM: Transaction: Tạo Phieu_Muon + Cập nhật Sach
+            PM->>PM: Transaction: Check soKhaDung > 0, INSERT PhieuMuon
             PM-->>TT: Phiếu mượn (mã, ngày mượn, hạn trả)
             TT-->>DG: Giao sách
         end
@@ -105,10 +105,10 @@ flowchart TD
     D -->|Không| E[Lỗi] --> Z[Kết thúc]
     D -->|Có| F[Tìm kiếm sách]
     F --> G[Chọn sách]
-    G --> H{Khả dụng?}
-    H -->|Không| I[Lỗi sách] --> Z
-    H -->|Có| J[Transaction: Tạo phiếu mượn +14 ngày]
-    J --> K[Cập nhật sách = DA_MUON]
+    G --> H{soKhaDung > 0?}
+    H -->|Không| I[Lỗi: Hết bản khả dụng] --> Z
+    H -->|Có| J[Transaction: Check soKhaDung > 0]
+    J --> K[INSERT PhieuMuon - hanTra +14 ngày]
     K --> L[Hiển thị phiếu] --> Z
 ```
 
@@ -118,7 +118,7 @@ flowchart TD
 2. Thủ thư tìm phiếu mượn (theo tên độc giả, tên sách, hoặc mã phiếu - dropdown chọn loại tìm)
 3. PM hiển thị danh sách phiếu đang mượn kèm phạt ước tính
 4. Thủ thư chọn phiếu → PM hiển thị chi tiết + tiền phạt tự động
-5. Thủ thư xác nhận → PM cập nhật trangThai = DA_TRA, Sach = SAN_SANG
+5. Thủ thư xác nhận trả (hoặc đánh dấu mất sách + phí đền) → PM cập nhật trangThai = DA_TRA
 
 ```mermaid
 sequenceDiagram
@@ -136,22 +136,24 @@ sequenceDiagram
         PM-->>TT: Chi tiết phiếu
         PM->>PM: Tính phạt tự động
         Note right of PM: Quá hạn: soNgay × 5000 VNĐ<br/>Đúng hạn: 0
-        PM-->>TT: Tiền phạt
-        TT->>PM: Xác nhận trả
-        PM->>PM: Cập nhật PhieuMuon + Sach
-        PM-->>TT: Kết quả trả sách
+        alt Sách bị mất
+            TT->>PM: Đánh dấu mất (daMatSach) + phí đền (phiMat)
+            PM->>PM: tienPhat = phatTre + phiMat, soMat += 1
+        else Trả bình thường
+            TT->>PM: Xác nhận trả
+            PM->>PM: UPDATE PhieuMuon = DA_TRA
+        end
+        PM-->>TT: Kết quả (ngày trả, tiền phạt)
         TT-->>DG: Thu phạt (nếu có)
     end
 ```
 
 ```mermaid
 stateDiagram-v2
-    [*] --> DANG_MUON: Tạo phiếu mượn
-    DANG_MUON --> DA_TRA: Trả đúng hạn
-    DANG_MUON --> QUA_HAN: Hết hạn trả
-    QUA_HAN --> DA_TRA: Trả + nộp phạt
-    DANG_MUON --> GIA_HAN: Gia hạn
-    GIA_HAN --> DANG_MUON: +7 ngày
+    [*] --> DANG_MUON: Tạo phiếu mượn (check soKhaDung > 0)
+    DANG_MUON --> DA_TRA: Trả bình thường (tính phạt quá hạn)
+    DANG_MUON --> DA_TRA: Trả + đánh dấu mất (soMat += 1, phiMat)
+    DANG_MUON --> DANG_MUON: Gia hạn (+7 ngày)
     DA_TRA --> [*]
 ```
 
@@ -235,14 +237,14 @@ sequenceDiagram
 
 ## 2a) Phân tích đối tượng thành phần (CRC)
 
-**UC01:** Doc_Gia (kiểm tra hợp lệ), Sach (kiểm tra khả dụng), Phieu_Muon (tạo bản ghi)
-**UC02:** Phieu_Muon (tìm, cập nhật, tính phạt), Sach (cập nhật trạng thái)
+**UC01:** Doc_Gia (kiểm tra hợp lệ), Sach (kiểm tra soKhaDung), Phieu_Muon (tạo bản ghi)
+**UC02:** Phieu_Muon (tìm, cập nhật, tính phạt), Sach (tăng soMat nếu mất)
 **UC03:** Phieu_Muon (tìm, kiểm tra điều kiện, cập nhật hạn trả)
 **UC04:** Tai_Khoan (CRUD, phân quyền, hash mật khẩu)
 
 | Lớp | Trách nhiệm | Cộng tác |
 |-----|------------|---------|
-| Sach | Lưu trữ thông tin sách, CRUD, tìm kiếm (không dấu), cập nhật trạng thái | Phieu_Muon |
+| Sach | Lưu trữ thông tin sách, CRUD, tìm kiếm (không dấu), quản lý counters, tính soKhaDung | Phieu_Muon |
 | Doc_Gia | Lưu trữ thông tin độc giả, CRUD, tìm kiếm (không dấu), kiểm tra hạn thẻ | Phieu_Muon |
 | Phieu_Muon | Ghi nhận mượn sách, tính phạt, gia hạn, tìm kiếm | Sach, Doc_Gia |
 | Tai_Khoan | Xác thực đăng nhập, phân quyền, CRUD tài khoản, hash mật khẩu | Thu_Thu, Quan_Tri |
@@ -262,12 +264,12 @@ sequenceDiagram
     DG-->>TT: Danh sách kết quả
     TT->>DG: kiemTraHopLe(maDocGia): Boolean
     DG-->>TT: isValid
-    TT->>S: timKiem(tuKhoa: String): Sach[]
-    S-->>TT: Danh sách kết quả
-    TT->>S: kiemTraKhaDung(maSach): Boolean
-    S-->>TT: isAvailable
+    TT->>S: searchBooks(tuKhoa: String): SachWithAvailability[]
+    S-->>TT: Danh sách kết quả + soKhaDung
+    TT->>S: getAvailableCount(maSach): Integer
+    S-->>TT: soKhaDung
     TT->>PM: tao(maDocGia, maSach): PhieuMuon [Transaction]
-    PM->>S: capNhatTrangThai(maSach, DA_MUON)
+    Note right of PM: Check soKhaDung > 0<br/>INSERT PhieuMuon<br/>(không UPDATE Sach)
     PM-->>TT: Phieu_Muon
 ```
 
@@ -281,10 +283,17 @@ sequenceDiagram
     
     TT->>PM: timKiem(tuKhoa, loaiTim): PhieuMuon[]
     PM-->>TT: Danh sách phiếu đang mượn
-    TT->>PM: xacNhanTra(maPhieu)
+    TT->>PM: traSach(maPhieu, {daMatSach?, phiMat?})
     PM->>PM: tinhPhat(hanTra, ngayTraThucTe)
-    Note right of PM: tienPhat = max(0, ngayTra - hanTra) × 5000
-    PM->>S: capNhatTrangThai(maSach, SAN_SANG)
+    Note right of PM: phatTre = max(0, ngayTra - hanTra) × 5000
+    alt daMatSach = true
+        PM->>S: incrementLost(maSach)
+        Note right of S: soMat += 1
+        PM->>PM: tienPhat = phatTre + phiMat
+    else Trả bình thường
+        PM->>PM: tienPhat = phatTre
+    end
+    PM->>PM: UPDATE PhieuMuon (DA_TRA, tienPhat)
     PM-->>TT: {tienPhat, ngayTraThucTe}
 ```
 
@@ -314,14 +323,14 @@ sequenceDiagram
     actor QT as Actor: Quan_Tri
     participant TK as Tai_Khoan
     
-    QT->>TK: kiemTraQuyen(maTaiKhoan, QUAN_TRI_VIEN): Boolean
+    QT->>TK: checkRole(maTaiKhoan, QUAN_TRI_VIEN): Boolean
     TK-->>QT: isAdmin
     alt Không phải admin
         TK-->>QT: 403 Forbidden
     else Là admin
-        QT->>TK: danhSachTaiKhoan(): TaiKhoan[]
+        QT->>TK: listAccounts(): TaiKhoan[]
         TK-->>QT: Danh sách
-        QT->>TK: taoTaiKhoan(tenDN, matKhau, vaiTro)
+        QT->>TK: createAccount(tenDN, matKhau, vaiTro)
         TK->>TK: bcrypt.hash(matKhau)
         TK-->>QT: {maTaiKhoan}
     end
@@ -344,15 +353,20 @@ classDiagram
         - maSach: String
         - tieuDe: String
         - tacGia: String
-        - tinhTrang: TinhTrangSach
+        - soBanSao: Integer
+        - soMat: Integer
+        - soBaoTri: Integer
         - createdAt: DateTime
         - updatedAt: DateTime
-        + danhSach(): Sach[]
-        + timKiem(tuKhoa): Sach[]
-        + tao(tieuDe, tacGia): Sach
-        + capNhat(maSach, data): void
-        + xoa(maSach): DeleteResult
-        + capNhatTrangThai(trangThai): void
+        + listBooks(): SachWithAvailability[]
+        + searchBooks(tuKhoa, onlyAvailable?): SachWithAvailability[]
+        + createBook(tieuDe, tacGia, soBanSao?): Sach
+        + updateBook(maSach, data): Sach
+        + deleteBook(maSach): DeleteResult
+        + getAvailableCount(maSach): Integer
+        + getActiveLoanCount(maSach): Integer
+        + incrementLost(maSach): void
+        + withAvailability(sach): SachWithAvailability
     }
     class Doc_Gia {
         - maDocGia: String
@@ -382,7 +396,7 @@ classDiagram
         - updatedAt: DateTime
         + danhSach(search, searchType): PhieuMuon[]
         + tao(maDocGia, maSach): PhieuMuon [Transaction]
-        + traSach(maPhieu): ReturnResult
+        + traSach(maPhieu, options?): ReturnResult
         + giaHan(maPhieu): PhieuMuon
         + tinhPhat(hanTra, ngayTra): Number
     }
@@ -394,14 +408,14 @@ classDiagram
         - trangThai: TrangThaiTaiKhoan
         - createdAt: DateTime
         - updatedAt: DateTime
-        + dangNhap(tenDN, matKhau): LoginResult
-        + dangXuat(maTaiKhoan): void
-        + kiemTraQuyen(maTaiKhoan, quyen): Boolean
-        + danhSachTaiKhoan(): TaiKhoan[]
-        + taoTaiKhoan(tenDN, matKhau, vaiTro): TaiKhoan
-        + capNhatTrangThai(maTK, trangThai): void
-        + doiMatKhau(maTK, matKhauMoi): void
-        + xoaTaiKhoan(maTK): void
+        + login(tenDN, matKhau): LoginResult
+        + logout(maTaiKhoan): void
+        + checkRole(maTaiKhoan, quyen): Boolean
+        + listAccounts(): TaiKhoan[]
+        + createAccount(tenDN, matKhau, vaiTro): TaiKhoan
+        + updateStatus(maTK, trangThai): void
+        + resetPassword(maTK, matKhauMoi): void
+        + deleteAccount(maTK): void
     }
     Phieu_Muon --> Sach : tham chiếu
     Phieu_Muon --> Doc_Gia : tham chiếu
@@ -409,13 +423,6 @@ classDiagram
 
 ```mermaid
 classDiagram
-    class TinhTrangSach {
-        <<enumeration>>
-        SAN_SANG
-        DA_MUON
-        BAO_TRI
-        MAT
-    }
     class TrangThaiPhieu {
         <<enumeration>>
         DANG_MUON
@@ -434,16 +441,17 @@ classDiagram
 ```
 
 **Quy tắc nghiệp vụ:**
-1. Tiền phạt = soNgayQuaHan × 5000 VNĐ/ngày
+1. Tiền phạt trễ = soNgayQuaHan × 5000 VNĐ/ngày
 2. Thời hạn mượn: 14 ngày
 3. Gia hạn: +7 ngày vào hạn trả hiện tại
-4. Mượn sách: tinhTrang phải = SAN_SANG
+4. Mượn sách: soKhaDung > 0 (kiểm tra trong transaction)
 5. Gia hạn: trangThai phải = DANG_MUON
 6. Xóa độc giả: không có phiếu DANG_MUON
-7. Xóa sách: tinhTrang ≠ DA_MUON
+7. Xóa sách: soDangMuon = 0
 8. Quản lý tài khoản: chỉ vaiTro = QUAN_TRI_VIEN mới được phép
 9. Mật khẩu: hash bằng bcrypt (10 rounds)
 10. Tạo phiếu mượn: sử dụng database transaction (atomic)
+11. Trả sách có thể đánh dấu mất: tienPhat = phatTre + phiMat, soMat += 1
 
 ---
 
@@ -464,7 +472,7 @@ Kiến trúc phân lớp:
 | mod-auth | Tai_Khoan (đăng nhập, phân quyền, CRUD tài khoản) | /auth/* |
 | mod-borrow | Phieu_Muon (mượn, trả, gia hạn, tính phạt) | /loans/* |
 | mod-reader | Doc_Gia (CRUD, tìm kiếm không dấu) | /readers/* |
-| mod-book | Sach (CRUD, tìm kiếm không dấu) | /books/* |
+| mod-book | Sach (CRUD, tìm kiếm không dấu, quản lý counters) | /books/* |
 | mod-report | Báo cáo (quá hạn, tình trạng kho) | /reports/* |
 
 **Factoring:**
@@ -489,7 +497,7 @@ flowchart TB
     TK -->|Phân quyền| PM
     TK -->|Phân quyền| TK
     PM -->|Kiểm tra hợp lệ| DG
-    PM -->|Cập nhật trạng thái| S
+    PM -->|Check soKhaDung / incrementLost| S
     BC -->|Truy vấn| PM
     BC -->|Truy vấn| S
 ```
@@ -555,7 +563,9 @@ erDiagram
         string maSach PK
         string tieuDe
         string tacGia
-        enum tinhTrang "SAN_SANG|DA_MUON|BAO_TRI|MAT"
+        integer soBanSao "default 1"
+        integer soMat "default 0"
+        integer soBaoTri "default 0"
         datetime createdAt
         datetime updatedAt
     }
@@ -593,18 +603,18 @@ erDiagram
 
 **Mượn sách** — Wizard 3 bước:
 - Bước 1: Tìm độc giả (đa trường, không dấu) → bảng kết quả → Chọn
-- Bước 2: Tìm sách (đa trường, không dấu) → bảng kết quả → Chọn (chỉ SẴN SÀNG)
+- Bước 2: Tìm sách (đa trường, không dấu) → bảng kết quả → Chọn (chỉ soKhaDung > 0)
 - Bước 3: Xác nhận → Phiếu mượn
 
 **Trả sách** — 2 bước:
 - Bước 1: Tìm phiếu (dropdown loại tìm + từ khóa) → bảng phiếu + phạt ước tính → Chọn
-- Bước 2: Xác nhận trả → Kết quả (ngày trả, tiền phạt)
+- Bước 2: Xác nhận trả (hoặc đánh dấu mất + phí đền) → Kết quả (ngày trả, tiền phạt)
 
 **Gia hạn** — 2 bước:
 - Bước 1: Tìm phiếu (dropdown loại tìm + từ khóa) → bảng phiếu → Chọn
 - Bước 2: Gia hạn +7 ngày → Hạn trả mới
 
-**Quản lý sách:** Tìm kiếm + bảng CRUD + modal edit (tinhTrang dropdown) + không xóa được sách đang mượn
+**Quản lý sách:** Tìm kiếm + bảng CRUD + modal edit (soBanSao/soMat/soBaoTri number inputs) + không xóa được sách đang mượn (soDangMuon > 0)
 **Quản lý độc giả:** Tìm kiếm (không dấu) + bảng CRUD + modal + DatePicker ngayHetHan + không xóa được độc giả đang mượn
 **Quản lý tài khoản (Admin):** Bảng danh sách + Tạo mới (modal) + Khóa/Mở khóa + Đổi mật khẩu (modal) + Xóa
 **Sao lưu dữ liệu (Admin):** Bảng danh sách file backup + Tạo backup ngay + Download file (auto-backup mỗi 24h trên production, giữ 7 bản gần nhất)
@@ -627,14 +637,14 @@ erDiagram
 | POST | /readers | Tạo độc giả | All |
 | PUT | /readers/:id | Cập nhật độc giả | All |
 | DELETE | /readers/:id | Xóa độc giả | All |
-| GET | /books | Danh sách sách | All |
+| GET | /books | Danh sách sách (with computed soKhaDung, soDangMuon) | All |
 | GET | /books/search | Tìm kiếm sách (không dấu) | All |
 | POST | /books | Tạo sách | All |
 | PUT | /books/:id | Cập nhật sách | All |
 | DELETE | /books/:id | Xóa sách | All |
 | GET | /loans | Danh sách phiếu mượn | All |
 | POST | /loans | Tạo phiếu mượn | All |
-| POST | /loans/:id/return | Trả sách | All |
+| POST | /loans/:id/return | Trả sách (optional: {daMatSach, phiMat}) | All |
 | POST | /loans/:id/extend | Gia hạn | All |
 | GET | /reports/overdue | Báo cáo quá hạn | All |
 | GET | /reports/inventory | Thống kê tình trạng kho | All |
@@ -652,7 +662,7 @@ flowchart LR
     C -->|Có| E[Return user info]
     E -->|Store localStorage| F[Frontend]
     F -->|Authorization: Bearer maTaiKhoan| G[API Requests]
-    G -->|Admin routes| H{kiemTraQuyen}
+    G -->|Admin routes| H{checkRole}
     H -->|QUAN_TRI_VIEN| I[200 OK]
     H -->|Khác| J[403 Forbidden]
 ```

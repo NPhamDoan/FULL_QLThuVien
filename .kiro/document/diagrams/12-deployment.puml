@@ -1,0 +1,47 @@
+@startuml Deployment Architecture
+skinparam nodeStyle rectangle
+
+node "Dev Machine" {
+    component "Vite Dev Server\n:5173" as Vite
+    component "Express API\n:3000" as Express
+    database "SQLite\nbackend/Database/dev.db" as DevDB
+    
+    Vite --> Express : proxy /api/* → :3000
+    Express --> DevDB
+}
+
+node "Render (Production)" {
+    component "Express\n:PORT (env)" as ProdExpress
+    component "Static Files\nfrontend/dist/" as Static
+    database "SQLite\nbackend/Database/dev.db" as ProdDB
+    folder "backups/" as BK
+    
+    ProdExpress --> Static : serve HTML/JS/CSS
+    ProdExpress --> ProdDB
+    ProdExpress --> BK : auto-backup 24h
+}
+
+cloud "Internet" {
+    actor "User" as User
+}
+
+node "Render Load Balancer" as LB {
+}
+
+User --> LB : HTTPS :443
+LB --> ProdExpress : HTTP :PORT
+
+note right of ProdExpress
+  NODE_ENV=production
+  - Backup scheduler ON
+  - Serve static frontend
+  - Single port
+end note
+
+note right of Vite
+  DEV mode only
+  - Hot reload
+  - /book-illustration.svg
+  - 2 ports (5173 + 3000)
+end note
+@enduml

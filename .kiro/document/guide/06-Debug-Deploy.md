@@ -12,9 +12,9 @@
 ```
 
 Script `start.bat` tự làm:
-1. `cd backend && npm install`
-2. `cd ../frontend && npm install`
-3. `cd ../backend && npm run dev:all` — chạy BE + FE song song
+1. `cd backend && pnpm install`
+2. `cd ../frontend && pnpm install`
+3. `cd ../backend && pnpm run dev:all` — chạy BE + FE song song
 
 Mở `http://localhost:5173`. Tài khoản mẫu:
 - `thuthu / 123456` (Thủ thư)
@@ -32,7 +32,7 @@ Lần đầu: DB trống → `index.ts` tự seed 2 accounts + 22 readers + 25 b
 - React DevTools xem state/props
 
 **Backend (API trả sai data hoặc lỗi 500):**
-- Xem terminal chạy `npm run dev` — log request + error stack trace
+- Xem terminal chạy `pnpm run dev` — log request + error stack trace
 - Đổi `LOG_LEVEL=debug` để log cả body
 
 **Database (data không đúng):**
@@ -92,7 +92,7 @@ Lookup error code: `TS6133`, `TS2345`... Google `typescript TS6133`.
 
 Trước khi commit, chạy:
 ```bash
-cd backend && npm test
+cd backend && pnpm test
 ```
 
 126 tests pass → tự tin controller logic OK.
@@ -119,7 +119,7 @@ Thử xóa DocGia/Sach đang có phiếu mượn. Code có check `hasActiveLoans
 Insert giá trị enum không hợp lệ (ví dụ `tinhTrang = 'SOMETHING_ELSE'`). DB có CHECK constraint trong schema. Luôn dùng enum từ `types/index.ts`.
 
 ### Frontend "Network Error" hoặc CORS
-Dev mode: Vite proxy chưa chạy → backend chưa start port 3000. Chạy `npm run dev:all`.
+Dev mode: Vite proxy chưa chạy → backend chưa start port 3000. Chạy `pnpm run dev:all`.
 
 ### "401 Unauthorized" khi đang login
 `localStorage.lms_user` bị xóa hoặc format sai. Mở console: `localStorage.getItem('lms_user')`. Nếu `null` → logout rồi login lại.
@@ -160,18 +160,42 @@ Chạy: `cd backend && node query.js`. Xóa file khi xong.
 
 ## 6.6. Reset DB
 
-Khi data rối:
+Khi data rối, có 3 cách:
+
+**Cách 1 — Dùng npm script (tiện nhất):**
+```bash
+cd backend && pnpm run reset
+```
+Xóa `Database/` rồi chạy seed ngay.
+
+**Cách 2 — Tay:**
 ```bash
 cd backend
 rm Database/dev.db*      # Linux/Mac
 del Database\dev.db*     # Windows
-npm run dev              # Restart → auto-seed
+pnpm run dev              # Restart → auto-seed
 ```
 
-Hoặc giữ seed tay:
+**Cách 3 — Chỉ re-seed (giữ DB file):**
 ```bash
-cd backend && npm run seed
+cd backend && pnpm run seed
 ```
+
+## 6.6c. Clean project (xóa tất cả generated)
+
+Xóa hết `node_modules`, `dist`, `Database`, `backups`, `Deploy` — chỉ giữ source code:
+
+```bash
+./clean.bat    # Windows
+./clean.sh     # Linux/Mac
+```
+
+Dùng khi:
+- Zip source gửi cho người khác
+- Reset sạch trước khi debug issue lạ
+- Giải phóng dung lượng disk
+
+Sau clean: `./start.bat` hoặc `./build.bat` để setup lại.
 
 ## 6.6b. Restore từ backup
 
@@ -189,7 +213,7 @@ cp ~/Downloads/backup_2026-05-06T14-30-00.db dev.db
 rm -f dev.db-wal dev.db-shm
 
 # Restart server
-cd .. && npm run dev
+cd .. && pnpm run dev
 ```
 
 **Quan trọng:** phải **dừng server** trước khi replace file `.db` (tránh corrupt).
@@ -208,7 +232,7 @@ Output:
 
 Chạy thử:
 ```bash
-cd backend && npm start
+cd backend && pnpm start
 ```
 
 Mở `http://localhost:3000` — giờ chỉ 1 port, Express serve cả frontend + API.
@@ -243,7 +267,7 @@ Gửi nguyên folder `Deploy/` cho người khác, họ chạy `start.bat` là c
 Tạo **Web Service** mới:
 - **Build Command:**
   ```
-  cd backend && npm install && cd ../frontend && npm install && npm run build && cd ../backend && npm run build
+  cd backend && pnpm install && cd ../frontend && pnpm install && pnpm run build && cd ../backend && pnpm run build
   ```
 - **Start Command:**
   ```
@@ -269,7 +293,7 @@ URL dạng `https://your-app.onrender.com`. Render proxy HTTPS 443 → container
 ## 6.9. Checklist trước khi commit/push
 
 - [ ] Xóa `console.log` debug
-- [ ] `npm test` pass (cd backend)
+- [ ] `pnpm test` pass (cd backend)
 - [ ] `npx tsc -b` không lỗi (cd frontend)
 - [ ] Đã test flow chính (login, mượn, trả, gia hạn)
 - [ ] Không commit `backend/Database/dev.db*` (đã có .gitignore)
@@ -280,24 +304,26 @@ URL dạng `https://your-app.onrender.com`. Render proxy HTTPS 443 → container
 ```bash
 # Backend
 cd backend
-npm run dev           # Chạy BE (LOG_LEVEL từ .env)
-npm run dev:debug     # LOG_LEVEL=debug
-npm run dev:quiet     # LOG_LEVEL=off
-npm run dev:all       # BE + FE song song
-npm run build         # tsc + vite build
-npm run seed          # Reset data seed
-npm test              # Jest
-npm start             # node dist/index.js
+pnpm run dev           # Chạy BE (LOG_LEVEL từ .env)
+pnpm run dev:debug     # LOG_LEVEL=debug
+pnpm run dev:quiet     # LOG_LEVEL=off
+pnpm run dev:all       # BE + FE song song
+pnpm run build         # tsc + vite build
+pnpm run seed          # Chạy seed (không xóa DB)
+pnpm run reset         # Xóa Database/ + re-seed
+pnpm test              # Jest (97 tests)
+pnpm start             # node dist/index.js
 
 # Frontend (ít khi chạy riêng)
 cd frontend
-npm run dev           # Vite dev server
-npm run build         # tsc -b + vite build
+pnpm run dev           # Vite dev server
+pnpm run build         # tsc -b + vite build
 
 # Root
 ./start.bat           # Install + dev
-./build.bat           # Install + build
-./deploy.bat          # Build + tạo Deploy folder
+scripts/build.bat     # Install + build
+scripts/deploy.bat    # Build + tạo Deploy folder
+scripts/clean.bat     # Xóa node_modules, dist, Database, backups, Deploy (giữ source)
 ```
 
 ## 6.11. Khi stuck
@@ -306,7 +332,7 @@ npm run build         # tsc -b + vite build
 2. **Xem git log** — file này thay đổi gì gần đây?
 3. **Bisect** — revert 1-2 commit, còn lỗi không?
 4. **Reset DB** — 50% bug là do data lỗi, không phải code
-5. **Tắt hết, chạy lại** — kill Node, xóa `node_modules`, `npm install` lại
+5. **Tắt hết, chạy lại** — kill Node, xóa `node_modules`, `pnpm install` lại
 6. **Test isolate** — tạo file test nhỏ reproducer, không cần toàn app
 
 ---

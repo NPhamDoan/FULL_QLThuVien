@@ -35,7 +35,7 @@ Có 3 tầng rõ ràng:
 
 Đây là điểm dễ rối nhất. Nhớ phân biệt:
 
-### Dev mode (`npm run dev:all` từ `backend/`)
+### Dev mode (`pnpm run dev:all` từ `backend/`)
 
 Chạy **2 server song song:**
 - Backend Express listen port **3000**

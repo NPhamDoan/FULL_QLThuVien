@@ -262,15 +262,16 @@ Ant Design `message.xxx()` hiện toast tạm thời ở góc trên.
 
 ## 5.9. Constants và Types
 
-`frontend/src/constants.ts` — mirror enum từ backend:
+- `frontend/src/constants.ts` — mirror enum từ backend:
 
 ```ts
 export const VaiTro = { THU_THU: 'THU_THU', QUAN_TRI_VIEN: 'QUAN_TRI_VIEN' } as const;
-export const TinhTrangSach = { SAN_SANG: 'SAN_SANG', ... } as const;
+export const TrangThaiPhieu = { DANG_MUON: 'DANG_MUON', DA_TRA: 'DA_TRA' } as const;
+export const TrangThaiTaiKhoan = { HOAT_DONG: 'HOAT_DONG', BI_KHOA: 'BI_KHOA' } as const;
 export type VaiTroType = typeof VaiTro[keyof typeof VaiTro];
 ```
 
-Dùng `VaiTro.QUAN_TRI_VIEN` thay vì `'QUAN_TRI_VIEN'` khắp codebase.
+Dùng `VaiTro.QUAN_TRI_VIEN` thay vì `'QUAN_TRI_VIEN'` khắp codebase. (Đã bỏ `TinhTrangSach` enum sau Cách A refactor.)
 
 **Lý do duplicate từ backend:** FE và BE build riêng, không share code. Muốn share phải setup monorepo hoặc npm workspace — thêm phức tạp không cần thiết cho project nhỏ.
 
@@ -293,13 +294,36 @@ export default defineConfig({
 });
 ```
 
-**Chỉ có tác dụng khi `npm run dev`:**
+**Chỉ có tác dụng khi `pnpm run dev`:**
 - Gọi `/api/books` → Vite forward sang `http://localhost:3000/books`
 - Tránh CORS khi dev (2 port khác nhau)
 
 **Production không cần config này** vì chỉ có 1 server (Express).
 
-## 5.11. Debug tricks
+### Environment-based assets
+
+Login page chọn ảnh theo mode:
+```tsx
+<img src={import.meta.env.DEV ? '/book-illustration.svg' : '/ptit.png'} />
+```
+- `import.meta.env.DEV === true` trong `pnpm run dev`
+- `false` khi `pnpm run build`
+
+## 5.11. Print receipt
+
+File `frontend/src/components/LoanReceipt.tsx`:
+
+```tsx
+<LoanReceipt data={{ maPhieu, ngayMuon, hanTra, docGia, sach, thuThu }} />
+```
+
+Component ẩn hoàn toàn trên màn hình (`display: none`), chỉ hiện khi in (`@media print`). Trigger bằng `window.print()`.
+
+Dùng ở:
+- **BorrowPage** — sau khi tạo phiếu xong, button "In phiếu mượn"
+- **ReturnPage/ExtendPage** — icon 🖨 ở mỗi row trong LoanSearchTable (gọi `loanApi.getDetails(id)` rồi print)
+
+## 5.12. Debug tricks
 
 ### Xem request frontend gửi đi
 Mở DevTools → Network tab → click request → xem Headers, Payload, Response.

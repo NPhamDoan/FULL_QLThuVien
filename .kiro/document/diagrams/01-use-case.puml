@@ -1,0 +1,36 @@
+@startuml UC - Use Case Diagram
+left to right direction
+skinparam actorStyle awesome
+
+actor "Thủ thư" as TT
+actor "Quản trị viên" as QT
+actor "Độc giả" as DG
+
+rectangle "Hệ thống QL Thư viện" {
+  usecase "UC01: Mượn sách" as UC01
+  usecase "UC02: Trả sách" as UC02
+  usecase "UC03: Gia hạn" as UC03
+  usecase "UC04: Quản lý tài khoản" as UC04
+  usecase "Đăng nhập" as Login
+  usecase "Quản lý sách" as QLSach
+  usecase "Quản lý độc giả" as QLDG
+  usecase "Sao lưu dữ liệu" as Backup
+  usecase "Báo cáo thống kê" as BaoCao
+}
+
+TT --> UC01
+TT --> UC02
+TT --> UC03
+TT --> Login
+TT --> QLSach
+TT --> QLDG
+TT --> BaoCao
+
+QT --> UC04
+QT --> Backup
+QT --|> TT : extends
+
+DG --> UC01 : yêu cầu
+DG --> UC02 : yêu cầu
+DG --> UC03 : yêu cầu
+@enduml

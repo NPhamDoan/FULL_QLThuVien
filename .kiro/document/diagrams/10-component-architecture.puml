@@ -1,0 +1,90 @@
+@startuml Component Architecture
+skinparam componentStyle rectangle
+
+package "Frontend (React SPA)" {
+    [LoginPage]
+    [BorrowPage]
+    [ReturnPage]
+    [ExtendPage]
+    [BooksPage]
+    [ReadersPage]
+    [AccountsPage]
+    [BackupsPage]
+    [DashboardPage]
+    [LoanSearchTable]
+    [LoanReceipt]
+    [api.ts] as API
+}
+
+package "Routes (Express)" {
+    [authRoutes]
+    [bookRoutes]
+    [readerRoutes]
+    [loanRoutes]
+    [reportRoutes]
+    [backupRoutes]
+}
+
+package "Controllers" {
+    [TaiKhoanController] as TKC
+    [SachController] as SC
+    [DocGiaController] as DGC
+    [PhieuMuonController] as PMC
+    [BaoCaoController] as BCC
+}
+
+package "Shared Utils" {
+    [utils/diacritics]
+    [backup.ts]
+}
+
+database "SQLite" {
+    [DocGia]
+    [Sach]
+    [PhieuMuon]
+    [TaiKhoan]
+}
+
+' Frontend → API
+[BorrowPage] --> API
+[ReturnPage] --> API
+[ExtendPage] --> API
+[BooksPage] --> API
+[ReadersPage] --> API
+[AccountsPage] --> API
+[BackupsPage] --> API
+[DashboardPage] --> API
+[ReturnPage] --> [LoanSearchTable]
+[ExtendPage] --> [LoanSearchTable]
+[BorrowPage] --> [LoanReceipt]
+
+' API → Routes
+API --> [authRoutes]
+API --> [bookRoutes]
+API --> [readerRoutes]
+API --> [loanRoutes]
+API --> [reportRoutes]
+API --> [backupRoutes]
+
+' Routes → Controllers
+[authRoutes] --> TKC
+[bookRoutes] --> SC
+[readerRoutes] --> DGC
+[loanRoutes] --> PMC
+[reportRoutes] --> BCC
+[backupRoutes] --> [backup.ts]
+
+' Controllers → DB
+TKC --> [TaiKhoan]
+SC --> [Sach]
+DGC --> [DocGia]
+PMC --> [PhieuMuon]
+PMC --> [Sach]
+BCC --> [PhieuMuon]
+BCC --> [Sach]
+
+' Shared utils
+SC --> [utils/diacritics]
+DGC --> [utils/diacritics]
+PMC --> [utils/diacritics]
+@enduml

@@ -67,20 +67,21 @@ backend/
 frontend/src/
 ├── App.tsx               # Router + Ant Design theme (primary: #0F766E, locale: viVN)
 ├── main.tsx              # React entry
-├── constants.ts          # Mirror enums from backend (VaiTro, TinhTrangSach, ...)
+├── constants.ts          # Mirror enums from backend (VaiTro, TrangThaiPhieu, TrangThaiTaiKhoan)
 ├── contexts/AuthContext.tsx  # Auth state, localStorage key 'lms_user'
 ├── components/
 │   ├── ProtectedRoute.tsx  # Auth guard with optional requiredRole
-│   └── LoanSearchTable.tsx # Shared search table for Return/Extend (with InfoItem, isOverdue, estimateFine)
+│   ├── LoanSearchTable.tsx # Shared search table for Return/Extend (with InfoItem, isOverdue, estimateFine, onPrint)
+│   └── LoanReceipt.tsx     # Printable loan receipt (A5, @media print, hidden on screen)
 ├── layouts/MainLayout.tsx   # Sidebar (3 groups, role-aware) + header (title only)
 ├── pages/
-│   ├── LoginPage.tsx     # Login form with PTIT logo illustration
-│   ├── DashboardPage.tsx # Overview cards + tabs (loans, overdue, inventory)
-│   ├── BorrowPage.tsx    # 3-step: search reader table → search book table → confirm
-│   ├── ReturnPage.tsx    # Uses LoanSearchTable → confirm return with fine display
-│   ├── ExtendPage.tsx    # Uses LoanSearchTable → confirm extend +7 days
+│   ├── LoginPage.tsx     # Login form; dev shows book-illustration.svg, prod shows ptit.png
+│   ├── DashboardPage.tsx # Overview cards + tabs (active loans, overdue, inventory)
+│   ├── BorrowPage.tsx    # 3-step: search reader → search book → confirm (+ print receipt)
+│   ├── ReturnPage.tsx    # LoanSearchTable → confirm return with fine + "sách bị mất" option
+│   ├── ExtendPage.tsx    # LoanSearchTable → confirm extend +7 days
 │   ├── ReadersPage.tsx   # Reader CRUD table + search bar + modal
-│   ├── BooksPage.tsx     # Book CRUD table + search + tinhTrang edit dropdown
+│   ├── BooksPage.tsx     # Book CRUD + counters edit (soBanSao/soMat/soBaoTri)
 │   ├── AccountsPage.tsx  # Admin-only: list + create/lock/reset password/delete
 │   └── BackupsPage.tsx   # Admin-only: list backups + create now + download
 └── services/api.ts       # Axios instance + all API methods + auth interceptor
@@ -102,10 +103,19 @@ Admin-only items use `vaiTro === VaiTro.QUAN_TRI_VIEN` check in MainLayout.
 
 ```sql
 DocGia (maDocGia PK, hoTen, email UNIQUE, soDienThoai, ngayHetHan, timestamps)
-Sach (maSach PK, tieuDe, tacGia, tinhTrang CHECK(SAN_SANG|DA_MUON|BAO_TRI|MAT), timestamps)
+Sach (maSach PK, tieuDe, tacGia, soBanSao, soMat, soBaoTri, timestamps)
 PhieuMuon (maPhieu PK, maDocGia FK→DocGia, maSach FK→Sach, ngayMuon, hanTra, ngayTraThucTe, trangThai CHECK(DANG_MUON|DA_TRA), tienPhat, timestamps)
 TaiKhoan (maTaiKhoan PK, tenDangNhap UNIQUE, matKhau, vaiTro CHECK(THU_THU|QUAN_TRI_VIEN), trangThai CHECK(HOAT_DONG|BI_KHOA), timestamps)
 ```
+
+**Sach book counters (no more `tinhTrang` enum):**
+- `soBanSao` — tổng số bản đã nhập
+- `soMat` — số bản đã mất (tăng khi trả + đánh dấu mất)
+- `soBaoTri` — số bản đang bảo trì
+- `soDangMuon` (computed) — `COUNT(PhieuMuon WHERE maSach=? AND trangThai='DANG_MUON')`
+- `soKhaDung` (computed) — `soBanSao - soMat - soBaoTri - soDangMuon`
+
+Migration logic auto-runs: if old `tinhTrang` column exists, convert to counters and drop.
 
 Indexes: tieuDe, tacGia, PhieuMuon(maDocGia), PhieuMuon(maSach), PhieuMuon(trangThai)
 
@@ -113,12 +123,13 @@ Indexes: tieuDe, tacGia, PhieuMuon(maDocGia), PhieuMuon(maSach), PhieuMuon(trang
 
 | Enum | Values |
 |------|--------|
-| TinhTrangSach | SAN_SANG, DA_MUON, BAO_TRI, MAT |
 | TrangThaiPhieu | DANG_MUON, DA_TRA |
 | VaiTro | THU_THU, QUAN_TRI_VIEN |
 | TrangThaiTaiKhoan | HOAT_DONG, BI_KHOA |
 
-**Rule:** Never hardcode enum strings in code/SQL. Always use `TinhTrangSach.SAN_SANG` etc. Frontend has mirror constants in `constants.ts`.
+**Note:** `TinhTrangSach` enum đã bỏ (Cách A refactor). Sach giờ dùng counters `soBanSao/soMat/soBaoTri` + derived `soKhaDung`.
+
+**Rule:** Never hardcode enum strings in code/SQL. Always use `TrangThaiPhieu.DANG_MUON` etc. Frontend has mirror constants in `constants.ts`.
 
 ## API Endpoints
 
@@ -146,19 +157,20 @@ Indexes: tieuDe, tacGia, PhieuMuon(maDocGia), PhieuMuon(maSach), PhieuMuon(trang
 ### Books
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | /books | List all books | All |
-| GET | /books/search | Search (?keyword or ?tieuDe/?tacGia/?maSach + optional ?tinhTrang) | All |
-| POST | /books | Create | All |
-| PUT | /books/:id | Update | All |
-| DELETE | /books/:id | Delete (fails if on loan) | All |
+| GET | /books | List all books (with computed soKhaDung, soDangMuon) | All |
+| GET | /books/search | Search (?keyword or ?tieuDe/?tacGia/?maSach + ?tinhTrang=SAN_SANG for available only) | All |
+| POST | /books | Create (tieuDe, tacGia, optional soBanSao=1) | All |
+| PUT | /books/:id | Update (validates soBanSao >= soMat + soBaoTri + soDangMuon) | All |
+| DELETE | /books/:id | Delete (fails if soDangMuon > 0) | All |
 
 ### Loans
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| GET | /loans | List active loans (?search, ?searchType=all\|docgia\|sach\|maphieu) | All |
+| GET | /loans | List active loans (?search, ?searchType=all\|docgia\|sach\|maphieu, diacritics-aware) | All |
 | POST | /loans | Create loan (maDocGia, maSach) | All |
 | GET | /loans/:id | Get by ID | All |
-| POST | /loans/:id/return | Return book (auto-calculates fine) | All |
+| GET | /loans/:id/details | Get with reader + book info (for printing receipt) | All |
+| POST | /loans/:id/return | Return book (optional body: {daMatSach, phiMat}) | All |
 | POST | /loans/:id/extend | Extend loan (+7 days) | All |
 
 ### Reports
@@ -179,7 +191,7 @@ Indexes: tieuDe, tacGia, PhieuMuon(maDocGia), PhieuMuon(maSach), PhieuMuon(trang
 1. POST /auth/login → bcrypt verify → return user info (no server session)
 2. Frontend stores `{ maTaiKhoan, tenDangNhap, vaiTro }` in localStorage key `lms_user`
 3. Axios interceptor auto-attaches `Authorization: Bearer {maTaiKhoan}` to all requests
-4. Most API routes are public; admin-only routes (/auth/accounts/*, /backups/*) validate role via `controller.kiemTraQuyen(maTaiKhoan, VaiTro.QUAN_TRI_VIEN)` inline
+4. Most API routes are public; admin-only routes (/auth/accounts/*, /backups/*) validate role via `controller.checkRole(maTaiKhoan, VaiTro.QUAN_TRI_VIEN)` inline
 5. Frontend has 3 layers of admin guard:
    - Menu: admin items hidden for non-admin in `MainLayout.tsx`
    - Route: `<ProtectedRoute requiredRole={VaiTro.QUAN_TRI_VIEN} />` wraps admin routes in `App.tsx`
@@ -193,10 +205,11 @@ Indexes: tieuDe, tacGia, PhieuMuon(maDocGia), PhieuMuon(maSach), PhieuMuon(trang
 - Extension: +7 days from current hanTra
 - Fine: 5,000 VND per overdue day (`max(0, ngayTra - hanTra) × 5000`)
 - Reader deletion blocked if active loans exist
-- Book deletion blocked if currently on loan
-- Book status auto-updates: SAN_SANG → DA_MUON on borrow, DA_MUON → SAN_SANG on return
+- Book deletion blocked if has active loans (soDangMuon > 0)
+- Book borrow requires soKhaDung > 0 (checked inside transaction for race safety)
+- Return can be marked "lost" → tăng soMat + charge phiMat (thủ thư nhập)
 - Loan creation and return use database transactions (atomic)
-- Search supports Vietnamese diacritics removal for fuzzy matching (shared utils/diacritics.ts)
+- Search supports Vietnamese diacritics removal via shared `utils/diacritics.ts` (filterByKeyword, matchesAny)
 - Admin-only actions: account CRUD, backup operations
 - Password hashing: bcrypt with 10 rounds
 
@@ -232,23 +245,25 @@ Admin downloads backups via `/backups` page. On Render free tier, disk wipes on 
 ```bash
 # Root (convenience)
 ./start.bat              # Install + dev:all (Windows); start.sh for Linux/Mac
-./build.bat              # Install + build for production
-./deploy.bat             # Build + create Deploy/ folder (portable)
+scripts/build.bat        # Install + build for production
+scripts/deploy.bat       # Build + create Deploy/ folder (portable)
+scripts/clean.bat        # Remove node_modules, dist, Database, backups, Deploy (keep source)
 
 # Backend
-cd backend && npm run dev          # Start backend (LOG_LEVEL from .env)
-cd backend && npm run dev:debug    # Start with LOG_LEVEL=debug
-cd backend && npm run dev:quiet    # Start with LOG_LEVEL=off
-cd backend && npm run dev:all      # Concurrently run BE (3000) + FE (5173)
-cd backend && npm run seed         # Seed test data manually
-cd backend && npm test             # Run Jest tests (126 tests)
+cd backend && pnpm run dev          # Start backend (LOG_LEVEL from .env)
+cd backend && pnpm run dev:debug    # Start with LOG_LEVEL=debug
+cd backend && pnpm run dev:quiet    # Start with LOG_LEVEL=off
+cd backend && pnpm run dev:all      # Concurrently run BE (3000) + FE (5173)
+cd backend && pnpm run seed         # Seed test data manually
+cd backend && pnpm run reset        # Delete Database folder + reseed
+cd backend && pnpm test             # Run Jest tests (97 tests)
 
 # Frontend
-cd frontend && npm run dev         # Start Vite dev server (proxy to :3000)
+cd frontend && pnpm run dev         # Start Vite dev server (proxy to :3000)
 
 # Production
-cd backend && npm run build        # Build BE (tsc) + FE (vite build)
-cd backend && npm start            # Serve built app (node dist/index.js)
+cd backend && pnpm run build        # Build BE (tsc) + FE (vite build)
+cd backend && pnpm start            # Serve built app (node dist/index.js)
 ```
 
 ## Test Accounts (auto-seeded)
@@ -273,23 +288,29 @@ Dự án sử dụng tiếng Việt không dấu cho tên entities, fields, UI l
 ### Backend
 - Controllers receive `Database` instance via constructor injection
 - Routes are thin wrappers: parse request → call controller method → format response (never query DB directly)
+- Method naming: **English verb + Vietnamese noun** (`createBook`, `searchReaders`, `login`, `checkRole`)
+- Entity/field naming: Vietnamese (`Sach`, `DocGia`, `tieuDe`, `hoTen`)
+- Local variable modifiers use Vietnamese suffix (`soBanSaoMoi`, `hanTraCu` — not `newSoBanSao`)
 - All SQL queries are raw (no ORM) using `db.prepare().run/get/all()`
 - Transactions via `db.transaction()` for: createLoan, returnBook
 - Enum values parameterized in SQL (`WHERE trangThai = ?` + `TrangThaiPhieu.DANG_MUON`), never hardcoded strings
 - Error handling: controllers return `{ success, error?, data? }` pattern; routes wrap in try/catch with 4xx/5xx status
 - Request logging: middleware/logger.ts with LOG_LEVEL env control, auto-masks `matKhau` in body
-- Diacritics: shared utils/diacritics.ts used by search in DocGia, Sach, TraCuuHeThong
+- Diacritics search: shared `utils/diacritics.ts` exports `removeDiacritics`, `matchesKeyword`, `matchesAny`, `filterByKeyword`
 
 ### Frontend
 - All API calls go through `services/api.ts` (grouped: authApi, bookApi, readerApi, loanApi, reportApi, accountApi, backupApi)
 - Axios interceptor auto-adds Authorization header from localStorage
 - Frontend uses Ant Design components (Table, Form, Modal, Card, Tabs)
-- `LoanSearchTable` is shared between Return/Extend pages (exports InfoItem, isOverdue, estimateFine helpers)
-- BorrowPage: wizard pattern (search reader → search book → confirm)
+- `LoanSearchTable` is shared between Return/Extend pages (exports InfoItem, isOverdue, estimateFine helpers, optional `onPrint` callback)
+- `LoanReceipt` component for printable receipt (A5, @media print, hidden on screen)
+- Print receipt available in 3 places: BorrowPage (after create), ReturnPage/ExtendPage (printer icon in loan table)
+- Login illustration: `/book-illustration.svg` in dev, `/ptit.png` in production (via `import.meta.env.DEV`)
+- BorrowPage: wizard pattern (search reader → search book → confirm → print)
 - Return/Extend pages: 3-phase pattern (search → confirm → result) with reset via `key` prop
-- BooksPage: edit modal includes tinhTrang dropdown (SAN_SANG/BAO_TRI/MAT, DA_MUON disabled)
-- ReadersPage: search bar (keyword search, diacritics-aware) + CRUD modal with DatePicker for ngayHetHan
-- AccountsPage / BackupsPage: admin-only, visible in menu only for QUAN_TRI_VIEN
+- BooksPage: edit modal has number inputs for soBanSao/soMat/soBaoTri, shows derived soKhaDung
+- ReturnPage: checkbox "Sách bị mất" + InputNumber phiMat → combines with late fine
+- AccountsPage / BackupsPage: admin-only, visible in menu only for QUAN_TRI_VIEN (3 layers: menu + route + backend)
 - Enums imported from `constants.ts` (never hardcode role/status strings)
 
 ## Build & Deploy
@@ -305,7 +326,7 @@ Dự án sử dụng tiếng Việt không dấu cho tên entities, fields, UI l
 - Uses `node --no-deprecation` to suppress Express url.parse() warning
 
 ### Render deployment
-- Build Command: `cd backend && npm install && cd ../frontend && npm install && npm run build && cd ../backend && npm run build`
+- Build Command: `cd backend && pnpm install && cd ../frontend && pnpm install && pnpm run build && cd ../backend && pnpm run build`
 - Start Command: `cd backend && node dist/index.js`
 - Env vars: `NODE_ENV=production` (enables backup scheduler), `LOG_LEVEL=info`
 - Render auto-sets `PORT` env var → Express listens there; LB proxies HTTPS 443 → container PORT

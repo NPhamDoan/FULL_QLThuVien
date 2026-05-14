@@ -29,11 +29,21 @@ CREATE TABLE Sach (
   maSach    TEXT PRIMARY KEY,          -- 'S001', 'S002'
   tieuDe    TEXT NOT NULL,
   tacGia    TEXT NOT NULL,
-  tinhTrang TEXT NOT NULL DEFAULT 'SAN_SANG'
-    CHECK (tinhTrang IN ('SAN_SANG', 'DA_MUON', 'BAO_TRI', 'MAT')),
+  soBanSao  INTEGER NOT NULL DEFAULT 1 CHECK (soBanSao >= 0),
+  soMat     INTEGER NOT NULL DEFAULT 0 CHECK (soMat >= 0),
+  soBaoTri  INTEGER NOT NULL DEFAULT 0 CHECK (soBaoTri >= 0),
   ...
 );
 ```
+
+**Counters thay cho enum tinhTrang (đã bỏ):**
+- `soBanSao`: tổng số bản nhập
+- `soMat`: số bản mất vĩnh viễn
+- `soBaoTri`: số bản đang bảo trì
+- `soDangMuon` (derived): `COUNT(PhieuMuon WHERE maSach=? AND trangThai='DANG_MUON')`
+- `soKhaDung` (derived): `soBanSao - soMat - soBaoTri - soDangMuon`
+
+1 đầu sách có thể có N bản sao. Ví dụ: S001 `soBanSao=5`, `soMat=1`, `soBaoTri=0`, 2 đang mượn → `soKhaDung=2`.
 
 ### PhieuMuon — Phiếu mượn
 
@@ -99,13 +109,6 @@ Tăng tốc tìm kiếm và JOIN.
 Định nghĩa 1 chỗ duy nhất — `backend/types/index.ts`:
 
 ```ts
-export enum TinhTrangSach {
-  SAN_SANG = "SAN_SANG",   // Sẵn sàng cho mượn
-  DA_MUON  = "DA_MUON",    // Đang được mượn
-  BAO_TRI  = "BAO_TRI",    // Đang bảo trì (không mượn được)
-  MAT      = "MAT",        // Đã mất
-}
-
 export enum TrangThaiPhieu {
   DANG_MUON = "DANG_MUON",
   DA_TRA    = "DA_TRA",
@@ -122,6 +125,8 @@ export enum TrangThaiTaiKhoan {
 }
 ```
 
+**Note:** `TinhTrangSach` enum đã bỏ (Cách A refactor). Sach giờ dùng counters `soBanSao/soMat/soBaoTri`.
+
 **Frontend mirror** trong `frontend/src/constants.ts` (do FE/BE không share code):
 
 ```ts
@@ -134,25 +139,35 @@ export const VaiTro = { THU_THU: 'THU_THU', QUAN_TRI_VIEN: 'QUAN_TRI_VIEN' } as 
 ## 3.3. Vòng đời 1 phiếu mượn
 
 ```
-           tạo phiếu                 trả sách
-SAN_SANG ────────────> DA_MUON ────────────> SAN_SANG (sách)
-                  │
-                  │ phieu.trangThai
-                  ↓
-               DANG_MUON ──────────> DA_TRA (phiếu)
-                  │
-                  │ gia hạn +7 ngày
-                  ↓
-               DANG_MUON (hanTra mới)
+Tạo phiếu (createLoan)                Trả sách (returnBook)
+ │                                     │
+ │ - Check soKhaDung > 0                │ - Nếu daMatSach: soMat += 1
+ │ - INSERT PhieuMuon (DANG_MUON)       │ - UPDATE PhieuMuon = DA_TRA
+ │   (KHÔNG update Sach counter)        │   (KHÔNG update Sach counter)
+ │                                     │
+ ↓                                     ↓
+PhieuMuon.trangThai                 PhieuMuon.trangThai
+  DANG_MUON ───────────────────────→ DA_TRA
+     │
+     │ gia hạn +7 ngày (extendLoan)
+     ↓
+  DANG_MUON (hanTra mới)
 ```
+
+Sach availability **tự động derive** từ:
+- `soBanSao - soMat - soBaoTri - COUNT(PhieuMuon WHERE DANG_MUON)`
+
+Không cần update Sach khi mượn/trả (chỉ update khi đánh dấu mất hoặc edit counter tay).
 
 **Công thức tính phạt:**
 ```
 tienPhat = max(0, (ngayTraThucTe - hanTra) ngày) × 5000 VNĐ
+         + phiMat (nếu đánh dấu sách bị mất)
 ```
 
 Nếu trả đúng hạn → `tienPhat = 0`.
-Nếu trả trễ 3 ngày → `tienPhat = 3 × 5000 = 15,000 VNĐ`.
+Nếu trả trễ 3 ngày + không mất → `tienPhat = 3 × 5000 = 15,000 VNĐ`.
+Nếu trả đúng hạn nhưng mất → `tienPhat = phiMat` (thủ thư nhập).
 
 ## 3.4. Data flow: Mượn sách (end-to-end)
 
@@ -204,23 +219,26 @@ router.post('/', (req, res) => {
 ```ts
 createLoan(maDocGia, maSach) {
   const tx = this.db.transaction(() => {
+    // Re-check availability inside tx (race-safe)
+    const book = db.prepare('SELECT soBanSao, soMat, soBaoTri FROM Sach WHERE maSach = ?').get(maSach);
+    const soDangMuon = db.prepare('SELECT COUNT(*) FROM PhieuMuon WHERE maSach=? AND trangThai=?').get(maSach, 'DANG_MUON');
+    if (book.soBanSao - book.soMat - book.soBaoTri - soDangMuon <= 0) {
+      throw new Error('Hết bản khả dụng');
+    }
+
     // Sinh mã tuần tự: PM001, PM002, ...
-    const last = this.db.prepare("... ORDER BY ... DESC LIMIT 1").get();
-    const maPhieu = 'PM' + String(parseInt(last.maPhieu.substring(2)) + 1).padStart(3, '0');
+    const maPhieu = 'PM' + String(nextNum).padStart(3, '0');
 
-    // INSERT phiếu mượn
-    this.db.prepare(`INSERT INTO PhieuMuon ...`).run(...);
+    // INSERT phiếu mượn (không update Sach)
+    db.prepare(`INSERT INTO PhieuMuon ...`).run(...);
 
-    // UPDATE sách thành DA_MUON
-    this.db.prepare(`UPDATE Sach SET tinhTrang = ? ...`).run(TinhTrangSach.DA_MUON, maSach);
-
-    return this.findLoanByCode(maPhieu);
+    return findLoanByCode(maPhieu);
   });
   return tx();
 }
 ```
 
-**Transaction** đảm bảo: nếu UPDATE sách thất bại → INSERT phiếu cũng bị rollback. Không có trạng thái nửa chừng.
+**Transaction** đảm bảo check + INSERT atomic. Không còn UPDATE Sach vì availability derive từ counters + PhieuMuon.
 
 ### Bước 5: Response về frontend
 
@@ -294,7 +312,9 @@ const row = db.prepare('SELECT * FROM Sach WHERE maSach = ?').get('S001');
 ## Tóm tắt phần 3
 
 - 4 bảng: DocGia, Sach, PhieuMuon, TaiKhoan
-- 4 enum quan trọng: TinhTrangSach, TrangThaiPhieu, VaiTro, TrangThaiTaiKhoan
+- 3 enum chính: TrangThaiPhieu, VaiTro, TrangThaiTaiKhoan (đã bỏ TinhTrangSach)
+- Sach dùng counters (soBanSao, soMat, soBaoTri) thay cho tinhTrang enum
+- soKhaDung = soBanSao - soMat - soBaoTri - soDangMuon (tính runtime, không lưu DB)
 - Không hardcode string — luôn dùng enum
 - Flow mượn sách: FE → axios → Vite proxy (dev) → Express → Controller (transaction) → SQLite
 - ID tuần tự 3 chữ số, query MAX hiện tại + 1

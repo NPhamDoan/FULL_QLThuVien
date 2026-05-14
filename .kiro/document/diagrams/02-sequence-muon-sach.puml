@@ -1,0 +1,29 @@
+@startuml Sequence - Mượn sách
+actor "Độc giả" as DG
+actor "Thủ thư" as TT
+participant "Hệ thống" as PM
+
+DG -> TT : Đưa thẻ + yêu cầu mượn
+TT -> PM : Tìm kiếm độc giả (mã/tên/email/SĐT)
+PM --> TT : Danh sách kết quả
+TT -> PM : Chọn độc giả
+
+alt Không hợp lệ (hết hạn thẻ)
+    PM --> TT : Lỗi "Thẻ hết hạn"
+    TT --> DG : Từ chối
+else Hợp lệ
+    PM --> TT : Thông tin độc giả ✓
+    TT -> PM : Tìm kiếm sách (mã/tiêu đề/tác giả)
+    PM --> TT : Danh sách sách + số khả dụng
+    TT -> PM : Chọn sách (soKhaDung > 0)
+    alt Hết bản khả dụng
+        PM --> TT : Lỗi "Hết bản khả dụng"
+    else Còn bản
+        PM --> TT : Thông tin sách ✓
+        TT -> PM : Xác nhận mượn
+        PM -> PM : Transaction:\n- Check soKhaDung > 0\n- INSERT PhieuMuon\n- (không update Sach)
+        PM --> TT : Phiếu mượn (mã, ngày mượn, hạn trả)
+        TT --> DG : Giao sách + phiếu
+    end
+end
+@enduml

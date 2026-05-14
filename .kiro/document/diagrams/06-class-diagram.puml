@@ -1,0 +1,86 @@
+@startuml Class Diagram - Entities
+skinparam classAttributeIconSize 0
+
+class Sach {
+    - maSach: String <<PK>>
+    - tieuDe: String
+    - tacGia: String
+    - soBanSao: Integer
+    - soMat: Integer
+    - soBaoTri: Integer
+    - createdAt: DateTime
+    - updatedAt: DateTime
+    --
+    + listBooks(): SachWithAvailability[]
+    + searchBooks(keyword, onlyAvailable?): SachWithAvailability[]
+    + createBook(tieuDe, tacGia, soBanSao?): Sach
+    + updateBook(maSach, data): Sach
+    + deleteBook(maSach): DeleteResult
+    + getAvailableCount(maSach): Integer
+    + getActiveLoanCount(maSach): Integer
+    + incrementLost(maSach): void
+    ..derived..
+    soDangMuon = COUNT(PhieuMuon DANG_MUON)
+    soKhaDung = soBanSao - soMat - soBaoTri - soDangMuon
+}
+
+class DocGia {
+    - maDocGia: String <<PK>>
+    - hoTen: String
+    - email: String <<UK>>
+    - soDienThoai: String
+    - ngayHetHan: Date
+    - createdAt: DateTime
+    - updatedAt: DateTime
+    --
+    + listReaders(): DocGia[]
+    + searchReaders(keyword): DocGia[]
+    + getReaderById(id): DocGia
+    + createMember(data): DocGia
+    + updateMember(id, data): DocGia
+    + deleteMember(id): DeleteResult
+    + hasActiveLoans(id): Boolean
+}
+
+class PhieuMuon {
+    - maPhieu: String <<PK>>
+    - maDocGia: String <<FK>>
+    - maSach: String <<FK>>
+    - ngayMuon: Date
+    - hanTra: Date
+    - ngayTraThucTe: Date?
+    - trangThai: TrangThaiPhieu
+    - tienPhat: Number
+    - createdAt: DateTime
+    - updatedAt: DateTime
+    --
+    + createLoan(maDocGia, maSach): PhieuMuon
+    + returnBook(maPhieu, {daMatSach?, phiMat?}): ReturnResult
+    + extendLoan(maPhieu): PhieuMuon
+    + searchActiveLoans(keyword, searchType): PhieuMuon[]
+    + calculateFine(hanTra, ngayTra): Number
+    + getLoanDetails(maPhieu): LoanDetails
+}
+
+class TaiKhoan {
+    - maTaiKhoan: String <<PK>>
+    - tenDangNhap: String <<UK>>
+    - matKhau: String {bcrypt}
+    - vaiTro: VaiTro
+    - trangThai: TrangThaiTaiKhoan
+    - createdAt: DateTime
+    - updatedAt: DateTime
+    --
+    + login(tenDN, matKhau): LoginResult
+    + logout(maTaiKhoan): void
+    + checkRole(maTaiKhoan, vaiTro): Boolean
+    + listAccounts(): TaiKhoan[]
+    + createAccount(tenDN, matKhau, vaiTro): TaiKhoan
+    + updateStatus(id, trangThai): void
+    + resetPassword(id, matKhauMoi): void
+    + deleteAccount(id): void
+}
+
+PhieuMuon --> Sach : maSach
+PhieuMuon --> DocGia : maDocGia
+@enduml

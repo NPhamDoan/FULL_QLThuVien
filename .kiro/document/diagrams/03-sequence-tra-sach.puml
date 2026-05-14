@@ -1,0 +1,32 @@
+@startuml Sequence - Trả sách
+actor "Độc giả" as DG
+actor "Thủ thư" as TT
+participant "Hệ thống" as PM
+
+DG -> TT : Đưa sách + phiếu mượn
+TT -> PM : Tìm phiếu (tên ĐG / tên sách / mã phiếu)
+PM --> TT : Danh sách phiếu đang mượn + phạt ước tính
+TT -> PM : Chọn phiếu
+
+alt Không tìm thấy
+    PM --> TT : Lỗi "Không tìm thấy"
+else Tìm thấy
+    PM --> TT : Chi tiết phiếu
+    PM -> PM : Tính phạt tự động
+    note right of PM
+      Quá hạn: soNgay × 5000 VNĐ
+      Đúng hạn: 0
+    end note
+
+    alt Sách bị mất
+        TT -> PM : Đánh dấu mất + nhập phí đền
+        PM -> PM : tienPhat = phatTre + phiMat\nsoMat += 1
+    else Trả bình thường
+        TT -> PM : Xác nhận trả
+        PM -> PM : UPDATE PhieuMuon = DA_TRA
+    end
+
+    PM --> TT : Kết quả (ngày trả, tiền phạt)
+    TT --> DG : Thu phạt (nếu có)
+end
+@enduml

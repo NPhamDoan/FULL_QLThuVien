@@ -1,0 +1,25 @@
+@startuml State - Phiếu mượn
+[*] --> DANG_MUON : createLoan()\n(check soKhaDung > 0)
+
+DANG_MUON --> DA_TRA : returnBook()\n(tính phạt quá hạn)
+DANG_MUON --> DA_TRA : returnBook({daMatSach: true})\n(soMat += 1, charge phiMat)
+DANG_MUON --> DANG_MUON : extendLoan()\n(hanTra += 7 ngày)
+
+state DANG_MUON {
+  state "Trong hạn" as InTime
+  state "Quá hạn" as Overdue
+  InTime --> Overdue : hanTra < today
+}
+
+DA_TRA --> [*]
+
+note right of DANG_MUON
+  soKhaDung của Sach tự giảm
+  (derived từ COUNT PhieuMuon)
+end note
+
+note right of DA_TRA
+  soKhaDung tự tăng lại
+  (trừ khi đánh dấu mất)
+end note
+@enduml

@@ -13,9 +13,10 @@ FULL_QLThuVien/
 ├── scripts/
 │   └── deploy.js              ← Script tạo Deploy folder
 ├── .kiro/document/            ← Tài liệu dự án
-├── start.bat / start.sh       ← Chạy dev mode
-├── build.bat / build.sh       ← Build production
+├── start.bat / start.sh       ← Chạy dev mode (install + dev:all)
+├── build.bat / build.sh       ← Build production (install + tsc + vite build)
 ├── deploy.bat / deploy.sh     ← Tạo Deploy folder portable
+├── clean.bat / clean.sh       ← Xóa node_modules, dist, Database, backups, Deploy (giữ source)
 └── README.md
 ```
 
@@ -89,20 +90,23 @@ frontend/
 ├── package.json
 │
 ├── public/
-│   └── favicon.svg            ← Asset copy nguyên xi
+│   ├── favicon.svg
+│   ├── book-illustration.svg  ← Login illustration (dev mode)
+│   └── ptit.png               ← Login illustration (production)
 │
 └── src/
     ├── main.tsx               ← React entry: render <App />
     ├── App.tsx                ← Routes + theme Ant Design
     ├── index.css              ← Global CSS
-    ├── constants.ts           ← Mirror enum từ backend (VaiTro, TinhTrangSach...)
+    ├── constants.ts           ← Mirror enum từ backend (VaiTro, TrangThaiPhieu, TrangThaiTaiKhoan)
     │
     ├── contexts/
     │   └── AuthContext.tsx    ← State user, login/logout, localStorage
     │
     ├── components/            ← Component tái sử dụng
     │   ├── ProtectedRoute.tsx # Guard route (check login + role)
-    │   └── LoanSearchTable.tsx # Bảng search phiếu (dùng chung Return/Extend)
+    │   ├── LoanSearchTable.tsx # Bảng search phiếu (dùng chung Return/Extend, có onPrint)
+    │   └── LoanReceipt.tsx    # Phiếu mượn in được (A5, @media print)
     │
     ├── layouts/
     │   └── MainLayout.tsx     ← Sidebar + Header + <Outlet />
@@ -161,12 +165,16 @@ frontend/
 
 | Tôi muốn | File cần xem |
 |----------|--------------|
-| Sửa schema DB | `backend/database.ts` |
+| Sửa schema DB | `backend/database.ts` (+ auto-migration trong đó) |
 | Thêm dữ liệu mẫu | `backend/seed.ts` |
 | Sửa logic mượn sách | `backend/controllers/PhieuMuonController.ts` |
+| Sửa logic sách / counters | `backend/controllers/SachController.ts` (soBanSao/soMat/soBaoTri) |
 | Thêm API endpoint | Tạo/sửa file trong `backend/routes/` |
 | Sửa lịch/số lượng backup | `backend/backup.ts` (BACKUP_INTERVAL_MS, MAX_BACKUPS) |
+| Sửa search diacritics | `backend/utils/diacritics.ts` (filterByKeyword, matchesAny) |
 | Đổi UI trang mượn | `frontend/src/pages/BorrowPage.tsx` |
+| Sửa phiếu in | `frontend/src/components/LoanReceipt.tsx` |
+| Sửa bảng search phiếu | `frontend/src/components/LoanSearchTable.tsx` |
 | Thêm menu sidebar | `frontend/src/layouts/MainLayout.tsx` |
 | Sửa API client | `frontend/src/services/api.ts` |
 | Thêm route mới | `frontend/src/App.tsx` |

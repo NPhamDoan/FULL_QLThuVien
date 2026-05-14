@@ -1,0 +1,57 @@
+@startuml ER Diagram
+skinparam linetype ortho
+
+entity "DOC_GIA" as DG {
+    * maDocGia : String <<PK>>
+    --
+    * hoTen : String
+    * email : String <<UK>>
+    * soDienThoai : String
+    * ngayHetHan : Date
+    createdAt : DateTime
+    updatedAt : DateTime
+}
+
+entity "SACH" as S {
+    * maSach : String <<PK>>
+    --
+    * tieuDe : String
+    * tacGia : String
+    * soBanSao : Integer (default 1)
+    * soMat : Integer (default 0)
+    * soBaoTri : Integer (default 0)
+    createdAt : DateTime
+    updatedAt : DateTime
+    ..derived (runtime)..
+    soDangMuon : COUNT(PhieuMuon DANG_MUON)
+    soKhaDung : soBanSao - soMat - soBaoTri - soDangMuon
+}
+
+entity "PHIEU_MUON" as PM {
+    * maPhieu : String <<PK>>
+    --
+    * maDocGia : String <<FK>>
+    * maSach : String <<FK>>
+    * ngayMuon : Date
+    * hanTra : Date
+    ngayTraThucTe : Date
+    * trangThai : {DANG_MUON | DA_TRA}
+    * tienPhat : Number (default 0)
+    createdAt : DateTime
+    updatedAt : DateTime
+}
+
+entity "TAI_KHOAN" as TK {
+    * maTaiKhoan : String <<PK>>
+    --
+    * tenDangNhap : String <<UK>>
+    * matKhau : String {bcrypt hash}
+    * vaiTro : {THU_THU | QUAN_TRI_VIEN}
+    * trangThai : {HOAT_DONG | BI_KHOA}
+    createdAt : DateTime
+    updatedAt : DateTime
+}
+
+DG ||--o{ PM : "có nhiều phiếu"
+S ||--o{ PM : "được mượn trong"
+@enduml

@@ -1,0 +1,19 @@
+@startuml Sequence - Gia hạn
+actor "Thủ thư" as TT
+participant "Hệ thống" as PM
+
+TT -> PM : Tìm phiếu mượn (tên ĐG / tên sách / mã phiếu)
+PM --> TT : Danh sách phiếu đang mượn
+TT -> PM : Chọn phiếu
+
+alt Không tồn tại
+    PM --> TT : Lỗi "Không tìm thấy"
+else Đã trả (DA_TRA)
+    PM --> TT : Lỗi "Phiếu đã hoàn tất"
+else Hợp lệ (DANG_MUON)
+    PM --> TT : Thông tin phiếu (hạn trả hiện tại)
+    TT -> PM : Yêu cầu gia hạn
+    PM -> PM : hanTra += 7 ngày
+    PM --> TT : Phiếu đã gia hạn (hạn trả mới)
+end
+@enduml

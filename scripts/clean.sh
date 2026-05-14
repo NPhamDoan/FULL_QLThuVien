@@ -1,4 +1,7 @@
 #!/bin/bash
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR/.."
+
 echo "=== Clean Project ==="
 echo "Xoa cac thu muc generated, giu lai source code"
 echo
@@ -23,4 +26,4 @@ rm -rf Deploy
 
 echo
 echo "=== Clean xong! ==="
-echo "Chay './start.sh' hoac './build.sh' de setup lai."
+echo "Chay './start.sh' de setup lai."

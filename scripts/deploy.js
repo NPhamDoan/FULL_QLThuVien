@@ -26,10 +26,10 @@ console.log('=== Building Library Management System ===\n');
 
 // 1. Install dependencies
 console.log('[1/5] Installing backend dependencies...');
-run('npm install', path.join(__dirname, '..', 'backend'));
+run('pnpm install', path.join(__dirname, '..', 'backend'));
 
 console.log('\n[2/5] Installing frontend dependencies...');
-run('npm install', path.join(__dirname, '..', 'frontend'));
+run('pnpm install', path.join(__dirname, '..', 'frontend'));
 
 // 3. Build backend
 console.log('\n[3/5] Building backend...');
@@ -37,7 +37,7 @@ run('npx tsc', path.join(__dirname, '..', 'backend'));
 
 // 4. Build frontend
 console.log('\n[4/5] Building frontend...');
-run('npm run build', path.join(__dirname, '..', 'frontend'));
+run('pnpm run build', path.join(__dirname, '..', 'frontend'));
 
 // 5. Clean and create Deploy folder
 console.log('\n[5/5] Creating Deploy folder...');
@@ -92,7 +92,7 @@ echo.
 
 if not exist node_modules (
   echo Installing dependencies...
-  call npm install --omit=dev
+  call pnpm install --prod
   echo.
 )
 
@@ -108,7 +108,7 @@ echo
 
 if [ ! -d "node_modules" ]; then
   echo "Installing dependencies..."
-  npm install --omit=dev
+  pnpm install --prod
   echo
 fi
 
@@ -129,9 +129,9 @@ CÁCH CHẠY:
   Linux/Mac: chmod +x start.sh && ./start.sh
 
 Hoặc chạy thủ công:
-  npm install --production
-  npm run seed    (tạo data mẫu, chỉ lần đầu)
-  npm start
+  pnpm install --prod
+  pnpm run seed    (tạo data mẫu, chỉ lần đầu)
+  pnpm start
 
 Mở trình duyệt: http://localhost:3000
 

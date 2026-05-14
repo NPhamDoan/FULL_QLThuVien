@@ -1,0 +1,29 @@
+@startuml Sequence - Quản lý tài khoản
+actor "Quản trị viên" as QT
+participant "Hệ thống" as PM
+
+QT -> PM : Truy cập /accounts
+PM -> PM : Kiểm tra Authorization header\ncheckRole(maTaiKhoan, QUAN_TRI_VIEN)
+
+alt Không phải admin
+    PM --> QT : 403 Forbidden
+else Là admin
+    PM --> QT : Danh sách tài khoản
+
+    alt Tạo mới
+        QT -> PM : Tạo (tenDangNhap, matKhau, vaiTro)
+        PM -> PM : bcrypt.hash(matKhau, 10)\nSinh mã TK tuần tự
+        PM --> QT : Tài khoản mới (maTaiKhoan)
+    else Khóa / Mở khóa
+        QT -> PM : updateStatus(id, HOAT_DONG | BI_KHOA)
+        PM --> QT : Thành công
+    else Đổi mật khẩu
+        QT -> PM : resetPassword(id, matKhauMoi)
+        PM -> PM : bcrypt.hash(matKhauMoi, 10)
+        PM --> QT : Thành công
+    else Xóa
+        QT -> PM : deleteAccount(id)
+        PM --> QT : Thành công
+    end
+end
+@enduml
