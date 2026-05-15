@@ -70,7 +70,7 @@ export class PhieuMuonController {
     }));
   }
 
-  // === Task 7.1: Validation functions ===
+  // === Validation functions ===
 
   validateMember(maDocGia: string): ValidationResult {
     const row = this.db.prepare(
@@ -111,7 +111,7 @@ export class PhieuMuonController {
     return { available: true, soKhaDung };
   }
 
-  // === Task 7.3: createLoan ===
+  // === createLoan ===
 
   createLoan(maDocGia: string, maSach: string): PhieuMuon {
     const createLoanTx = this.db.transaction(() => {
@@ -145,7 +145,7 @@ export class PhieuMuonController {
     return createLoanTx();
   }
 
-  // === Task 8.1: findLoan ===
+  // === findLoan ===
 
   findLoanByCode(maPhieu: string): PhieuMuon | null {
     const row = this.db.prepare(
@@ -195,7 +195,7 @@ export class PhieuMuonController {
     return this.mapRowToPhieuMuon(row);
   }
 
-  // === Task 8.3: calculateFine ===
+  // === calculateFine ===
 
   calculateFine(hanTra: Date, ngayTraThucTe: Date): number {
     if (ngayTraThucTe > hanTra) {
@@ -206,7 +206,7 @@ export class PhieuMuonController {
     return 0;
   }
 
-  // === Task 8.5: returnBook ===
+  // === returnBook ===
 
   returnBook(maPhieu: string, options: { daMatSach?: boolean; phiMat?: number } = {}): ReturnResult {
     const returnBookTx = this.db.transaction(() => {
@@ -244,7 +244,7 @@ export class PhieuMuonController {
     return returnBookTx();
   }
 
-  // === Task 9.1: extendLoan ===
+  // === extendLoan ===
 
   extendLoan(maPhieu: string): PhieuMuon {
     const loan = this.findLoanByCode(maPhieu);
